@@ -1,4 +1,4 @@
-```markdown
+
 # **A Unified Intelligence Framework: Mathematical Synthesis of Physics, Category Theory, and Machine Learning for Provably Robust AI**
 
 **Author:** [Your Name]  
