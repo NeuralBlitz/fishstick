@@ -1,0 +1,14 @@
+{
+  "run_id": "af5dac97_488977",
+  "name": "demo_experiment_2",
+  "tags": [
+    "demo",
+    "run_2"
+  ],
+  "config": {
+    "seed": 43,
+    "model": "simple_mlp"
+  },
+  "start_time": 1771360802.848897,
+  "log_dir": "demo_experiments/demo_experiment_2"
+}

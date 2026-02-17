@@ -17,6 +17,60 @@ from pathlib import Path
 import json
 import pickle
 
+# Import comprehensive pipeline module
+from .pipeline import (
+    # Data Loaders
+    SmartDataLoader,
+    CacheDataLoader,
+    MultiEpochDataLoader,
+    InfiniteDataLoader,
+    # Data Augmentation
+    AutoAugment,
+    AutoAugmentPolicy,
+    RandAugment,
+    TrivialAugmentWide,
+    AugMix,
+    MixUpCutMixCollator,
+    CutOut,
+    # Data Validation
+    DataValidator,
+    ValidationReport,
+    detect_corrupt_images,
+    check_class_balance,
+    detect_duplicates,
+    validate_splits,
+    # Data Preprocessing
+    SmartNormalizer,
+    AutoResizer,
+    CategoricalEncoder,
+    MissingValueImputer,
+    TextNormalizer,
+    # Dataset Builders
+    ImageDatasetBuilder,
+    FolderDataset,
+    CSVDatasetBuilder,
+    CSVDataset,
+    JSONDatasetBuilder,
+    JSONDataset,
+    HuggingFaceDatasetBuilder,
+    HuggingFaceDataset,
+    WebDatasetBuilder,
+    WebDataset,
+    # Data Sampling
+    ImbalancedSampler,
+    HardNegativeSampler,
+    CurriculumSampler,
+    ActiveLearningSampler,
+    # Caching & Optimization
+    DatasetCache,
+    PrefetchDataLoader,
+    ParallelDataLoader,
+    # Utilities
+    get_data_statistics,
+    split_dataset,
+    SubsetDataset,
+)
+
 
 class AugmentedDataset(Dataset):
     """

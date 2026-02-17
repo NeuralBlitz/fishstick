@@ -110,6 +110,220 @@ except ImportError:
     _EQUIVARIANT_AVAILABLE = False
 
 try:
+    from .selfsupervised import (
+        SimCLR,
+        BYOL,
+        SimSiam,
+        MoCo,
+        ContrastiveHead,
+        MAE,
+        SimMIM,
+        MaskedAutoencoder,
+        PatchEmbed,
+        DeepInfoMax,
+        GlobalInfoMax,
+        LocalInfoMax,
+        BarlowTwins,
+        BarlowTwinsLoss,
+        NT_XentLoss,
+        SimSiamLoss,
+        BYOLLoss,
+        VicRegLoss,
+        InfoNCE,
+        BYOLAugmentations,
+        SimCLRAugmentations,
+        MAEAugmentations,
+    )
+
+    _SELFSUPERVISED_AVAILABLE = True
+except ImportError:
+    _SELFSUPERVISED_AVAILABLE = False
+
+try:
+    from .vision import (
+        ViT,
+        DeiT,
+        SwinTransformer,
+        CvT,
+        create_vit,
+        create_deit,
+        create_swin,
+    )
+
+    _VISION_AVAILABLE = True
+except ImportError:
+    _VISION_AVAILABLE = False
+
+try:
+    from .training.advanced import (
+        SAM,
+        AdaBelief,
+        LAMB,
+        WarmupCosineScheduler,
+        WarmupLinearScheduler,
+        OneCycleLR,
+        LabelSmoothingCrossEntropy,
+        Mixup,
+        CutMix,
+    )
+
+    _ADVANCED_TRAINING_AVAILABLE = True
+except ImportError:
+    _ADVANCED_TRAINING_AVAILABLE = False
+
+try:
+    from .distillation.advanced import (
+        KnowledgeDistillationLoss,
+        FeatureDistillationLoss,
+        TakeKD,
+        DeepMutualLearning,
+        AttentionTransfer,
+    )
+
+    _DISTILLATION_AVAILABLE = True
+except ImportError:
+    _DISTILLATION_AVAILABLE = False
+
+try:
+    from .timeseries.forecasting import (
+        BaseForecaster,
+        LSTMForecaster,
+        TransformerForecaster,
+        NBeatsForecaster,
+        DeepARForecaster,
+        FeatureEngineer,
+        TimeSeriesMetrics,
+        TimeSeriesDataset,
+        create_sequences,
+        temporal_train_test_split,
+        TimeSeriesScaler,
+        ScalerType,
+        EnsembleForecaster,
+        create_forecaster,
+        ForecastingTrainer,
+    )
+
+    _TIMESERIES_AVAILABLE = True
+except ImportError as e:
+    print(f"Time series forecasting import error: {e}")
+    _TIMESERIES_AVAILABLE = False
+
+try:
+    from .selfsupervised.advanced import (
+        DINO,
+        SwAV,
+        WMSE,
+        MSN,
+    )
+
+    _SSL_ADVANCED_AVAILABLE = True
+except ImportError:
+    _SSL_ADVANCED_AVAILABLE = False
+
+try:
+    from .meta import (
+        MAML,
+        ProtoNet,
+        Reptile,
+        MatchingNetwork,
+        SNAIL,
+    )
+
+    _META_AVAILABLE = True
+except ImportError:
+    _META_AVAILABLE = False
+
+try:
+    from .compression.pruning import (
+        MagnitudePruner,
+        LotteryTicketPruner,
+        DynamicPruner,
+        SlimmingPruner,
+    )
+
+    _COMPRESSION_AVAILABLE = True
+except ImportError:
+    _COMPRESSION_AVAILABLE = False
+
+try:
+    from .uncertainty import (
+        MCAlphaDropout,
+        EnsembleUncertainty,
+        BayesianNN,
+        MaxSoftmaxOODDetector,
+        EnergyOODDetector,
+        TemperatureScaledClassifier,
+    )
+
+    _UNCERTAINTY_AVAILABLE = True
+except ImportError:
+    _UNCERTAINTY_AVAILABLE = False
+
+try:
+    from .continual import (
+        EWC,
+        PackNet,
+        ProgressiveNeuralNetwork,
+        MemoryReplay,
+        GEM,
+        LwF,
+    )
+
+    _CONTINUAL_AVAILABLE = True
+except ImportError:
+    _CONTINUAL_AVAILABLE = False
+
+try:
+    from .active import (
+        UncertaintySampling,
+        MarginSampling,
+        EntropySampling,
+        BALD,
+        CoreSet,
+    )
+
+    _ACTIVE_AVAILABLE = True
+except ImportError:
+    _ACTIVE_AVAILABLE = False
+
+try:
+    from .neuroscience import (
+        LeakyIntegrateAndFire,
+        HodgkinHuxley,
+        Izhikevich,
+        AdaptiveLIF,
+        SpikingDense,
+        SpikingConv2d,
+        LiquidStateMachine,
+        SpikingAttention,
+        ThresholdDependentPlasticity,
+        STDP,
+        OjaRule,
+        BCMPlasticity,
+        HomeostaticPlasticity,
+        TripletSTDP,
+        VoltageBasedSTDP,
+        NeuralAttention,
+        WinnerTakeAllAttention,
+        DivisiveNormalization,
+        NormalizedAttention,
+        FeedbackAttention,
+        PredictiveAttention,
+        RateEncoder,
+        PoissonEncoder,
+        TemporalEncoder,
+        PopulationEncoder,
+        MixedCodeEncoder,
+        LatentPopulationEncoder,
+        DeltaEncoder,
+        GridCellEncoder,
+    )
+
+    _NEUROSCIENCE_AVAILABLE = True
+except ImportError:
+    _NEUROSCIENCE_AVAILABLE = False
+
+try:
     from .causal import (
         CausalGraph,
         StructuralEquation,
@@ -221,6 +435,74 @@ try:
 except ImportError:
     _REPRESENTATION_AVAILABLE = False
 
+try:
+    from .memory import (
+        DifferentiableStack,
+        DifferentiableQueue,
+        DifferentiableDeque,
+        PriorityQueue,
+        DifferentiableStackEnsemble,
+        NeuralTuringMachine,
+        LookupFreeNTM,
+        create_ntm,
+        HopfieldAttention,
+        SparseMemoryAttention,
+        KeyValueMemoryAttention,
+        AssociativeAttention,
+        MemoryAugmentedAttention,
+        RoutingAttention,
+        SetAttention,
+        CosineSimilarityAddressing,
+        EuclideanDistanceAddressing,
+        DotProductAddressing,
+        LearnedSimilarityAddressing,
+        MultiHeadContentAddressing,
+        HybridAddressing,
+        AttentionBasedAddressing,
+        MemoryBank,
+        AssociativeMemory,
+        WorkingMemory,
+        EpisodicMemory,
+        SemanticMemory,
+        HierarchicalMemorySystem,
+        ContinualLearningMemory,
+        MetaLearningMemory,
+    )
+
+    _MEMORY_AVAILABLE = True
+except ImportError as e:
+    print(f"Memory module import error: {e}")
+    _MEMORY_AVAILABLE = False
+
+try:
+    from .topology import (
+        PersistentHomology,
+        PersistenceDiagram,
+        BirthDeathPair,
+        VietorisRipsComplex,
+        Filtration,
+        Mapper,
+        MapperCover,
+        SimplicialComplexBuilder,
+        TopologicalFeatures,
+        PersistentEntropy,
+        BettiCurve,
+        PersistenceLandscape,
+        Silhouette,
+        PersistentHomologyLoss,
+        DiagramDistanceLoss,
+        PersistentEntropyLoss,
+        TopologicalRegularization,
+        SimplicialComplex,
+        BoundaryOperator,
+        HomologyBasis,
+    )
+
+    _TOPOLOGY_AVAILABLE = True
+except ImportError as e:
+    print(f"Topology module import error: {e}")
+    _TOPOLOGY_AVAILABLE = False
+
 
 __all__ = [
     "MetricTensor",
@@ -275,6 +557,29 @@ __all__ = [
     "SE3Transformer",
     "E3Conv",
     "EquivariantPointCloudNetwork",
+    # Self-Supervised Learning
+    "SimCLR",
+    "BYOL",
+    "SimSiam",
+    "MoCo",
+    "ContrastiveHead",
+    "MAE",
+    "SimMIM",
+    "MaskedAutoencoder",
+    "PatchEmbed",
+    "DeepInfoMax",
+    "GlobalInfoMax",
+    "LocalInfoMax",
+    "BarlowTwins",
+    "BarlowTwinsLoss",
+    "NT_XentLoss",
+    "SimSiamLoss",
+    "BYOLLoss",
+    "VicRegLoss",
+    "InfoNCE",
+    "BYOLAugmentations",
+    "SimCLRAugmentations",
+    "MAEAugmentations",
     # Causal
     "CausalGraph",
     "StructuralCausalModel",
@@ -350,4 +655,209 @@ __all__ = [
     "RootSystem",
     "WeightLattice",
     "DynkinDiagram",
+    # Vision Transformers
+    "ViT",
+    "DeiT",
+    "SwinTransformer",
+    "CvT",
+    "create_vit",
+    "create_deit",
+    "create_swin",
+    # Advanced Training
+    "SAM",
+    "AdaBelief",
+    "LAMB",
+    "WarmupCosineScheduler",
+    "WarmupLinearScheduler",
+    "OneCycleLR",
+    "LabelSmoothingCrossEntropy",
+    "Mixup",
+    "CutMix",
+    # Knowledge Distillation
+    "KnowledgeDistillationLoss",
+    "FeatureDistillationLoss",
+    "TakeKD",
+    "DeepMutualLearning",
+    "AttentionTransfer",
+    # Time Series Forecasting
+    "BaseForecaster",
+    "LSTMForecaster",
+    "TransformerForecaster",
+    "NBeatsForecaster",
+    "DeepARForecaster",
+    "FeatureEngineer",
+    "TimeSeriesMetrics",
+    "TimeSeriesDataset",
+    "create_sequences",
+    "temporal_train_test_split",
+    "TimeSeriesScaler",
+    "ScalerType",
+    "EnsembleForecaster",
+    "create_forecaster",
+    "ForecastingTrainer",
+    # Additional SSL
+    "DINO",
+    "SwAV",
+    "WMSE",
+    "MSN",
+    # Meta-Learning
+    "MAML",
+    "ProtoNet",
+    "Reptile",
+    "MatchingNetwork",
+    "SNAIL",
+    # Model Compression
+    "MagnitudePruner",
+    "LotteryTicketPruner",
+    "DynamicPruner",
+    "SlimmingPruner",
+    # Uncertainty
+    "MCAlphaDropout",
+    "EnsembleUncertainty",
+    "BayesianNN",
+    "MaxSoftmaxOODDetector",
+    "EnergyOODDetector",
+    "TemperatureScaledClassifier",
+    # Continual Learning
+    "EWC",
+    "PackNet",
+    "ProgressiveNeuralNetwork",
+    "MemoryReplay",
+    "GEM",
+    "LwF",
+    # Active Learning
+    "UncertaintySampling",
+    "MarginSampling",
+    "EntropySampling",
+    "BALD",
+    "CoreSet",
+    # Neuroscience
+    "LeakyIntegrateAndFire",
+    "HodgkinHuxley",
+    "Izhikevich",
+    "AdaptiveLIF",
+    "SpikingDense",
+    "SpikingConv2d",
+    "LiquidStateMachine",
+    "SpikingAttention",
+    "ThresholdDependentPlasticity",
+    "STDP",
+    "OjaRule",
+    "BCMPlasticity",
+    "HomeostaticPlasticity",
+    "TripletSTDP",
+    "VoltageBasedSTDP",
+    "NeuralAttention",
+    "WinnerTakeAllAttention",
+    "DivisiveNormalization",
+    "NormalizedAttention",
+    "FeedbackAttention",
+    "PredictiveAttention",
+    "RateEncoder",
+    "PoissonEncoder",
+    "TemporalEncoder",
+    "PopulationEncoder",
+    "MixedCodeEncoder",
+    "LatentPopulationEncoder",
+    "DeltaEncoder",
+    "GridCellEncoder",
+    # Privacy & Differential Privacy
+    "PrivacyEngine",
+    "FederatedPrivacyEngine",
+    "PrivacyEngineConfig",
+    "DPSGD",
+    "DPTrainer",
+    "GaussianMechanism",
+    "LaplaceMechanism",
+    "ExponentialMechanism",
+    "RDPAccountant",
+    "BasicAccountant",
+    "GaussianAccountant",
+    "StaticClipper",
+    "AdaptiveClipler",
+    "PerLayerClipper",
+    "SubsampleAmplifier",
+    "ShuffleAmplifier",
+    "PoissonSampler",
+    "BatchSampler",
+    "NoisyAggregator",
+    "DPFederatedAggregator",
+    "SecureAggregator",
+    "SecureAggregationProtocol",
+    "AdditiveSecretSharing",
+    "SecureSum",
+    "create_privacy_engine",
+    "create_noise_mechanism",
+    "create_accountant",
+    "create_clipper",
+    "create_aggregator",
+    "create_sampler",
+    "amplify_privacy",
+    "compose_epsilons",
+    "compute_gaussian_epsilon",
+    "estimate_epsilon",
+    "PrivacyBudget",
 ]
+
+try:
+    from .privacy import (
+        PrivacyEngine,
+        FederatedPrivacyEngine,
+        PrivacyEngineConfig,
+        DPSGD,
+        DPTrainer,
+        GaussianMechanism,
+        LaplaceMechanism,
+        ExponentialMechanism,
+        GaussianMixtureMechanism,
+        RDPAccountant,
+        BasicAccountant,
+        GaussianAccountant,
+        PrivacyBudgetTracker,
+        StaticClipper,
+        AdaptiveClipper,
+        PerLayerClipper,
+        NormAccountingClipper,
+        SubsampleAmplifier,
+        ShuffleAmplifier,
+        LocalAmplifier,
+        ComposeAmplifier,
+        PoissonSampler,
+        BatchSampler,
+        StratifiedSampler,
+        WeightedSampler,
+        PrivacyAwareSampler,
+        NoisyAggregator,
+        ClippedAggregator,
+        SecureAggregator,
+        DPFederatedAggregator,
+        SecureAggregationProtocol,
+        AdditiveSecretSharing,
+        ThresholdCryptography,
+        SecureSum,
+        create_privacy_engine,
+        create_noise_mechanism,
+        create_accountant,
+        create_clipper,
+        create_aggregator,
+        create_sampler,
+        create_secure_aggregation,
+        amplify_privacy,
+        compose_epsilons,
+        compute_gaussian_epsilon,
+        compute_laplace_epsilon,
+        convert_rdp_to_dp,
+        convert_dp_to_rdp,
+        compute_subsampled_epsilon,
+        compute_gaussian_composition,
+        compute_privacy_budget,
+        estimate_utilitarian_epsilon,
+        compute_noise_scale,
+        PrivacyAccountantSimple,
+        PrivacyBudget,
+        estimate_epsilon,
+    )
+
+    _PRIVACY_AVAILABLE = True
+except ImportError:
+    _PRIVACY_AVAILABLE = False

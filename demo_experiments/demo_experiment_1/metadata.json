@@ -1,0 +1,14 @@
+{
+  "run_id": "fdc79654_443673",
+  "name": "demo_experiment_1",
+  "tags": [
+    "demo",
+    "run_1"
+  ],
+  "config": {
+    "seed": 42,
+    "model": "simple_mlp"
+  },
+  "start_time": 1771360802.8443654,
+  "log_dir": "demo_experiments/demo_experiment_1"
+}

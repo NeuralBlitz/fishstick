@@ -7,6 +7,7 @@ Advanced image processing, augmentation, and vision models with:
 - Vision transformers with attention
 - Object detection utilities
 - Image classification models
+- Vision Transformers (ViT, DeiT, Swin, CvT)
 """
 
 from typing import Tuple, List, Optional, Union, Callable
@@ -17,6 +18,38 @@ from torchvision import transforms, models
 from torchvision.transforms import functional as TF
 import numpy as np
 from PIL import Image
+
+# Import new vision transformers
+from fishstick.vision.transformers import (
+    ViT,
+    DeiT,
+    SwinTransformer,
+    CvT,
+    create_vit,
+    create_deit,
+    create_swin,
+)
+
+__all__ = [
+    # Existing
+    "GeometricAugmentation",
+    "SheafImageProcessor",
+    "VisionTransformerBlock",
+    "PatchEmbedding",
+    "VisionTransformer",
+    "ObjectDetector",
+    "ImageAugmentationPipeline",
+    "SheafAugmentedDataset",
+    "COCO_INSTANCE_CATEGORY_NAMES",
+    # New Vision Transformers
+    "ViT",
+    "DeiT",
+    "SwinTransformer",
+    "CvT",
+    "create_vit",
+    "create_deit",
+    "create_swin",
+]
 
 
 class GeometricAugmentation:
