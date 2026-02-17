@@ -122,6 +122,105 @@ try:
 except ImportError:
     _CAUSAL_AVAILABLE = False
 
+try:
+    from .quantum import (
+        QuantumCircuit,
+        Gate,
+        Hadamard,
+        CNOT,
+        RX,
+        RY,
+        RZ,
+        PauliX,
+        PauliY,
+        PauliZ,
+        TensorNetwork,
+        MPS,
+        TTN,
+        PEPS,
+        QuantumEmbedding,
+        AmplitudeEmbedding,
+        AngleEmbedding,
+        BasicEntanglerLayers,
+        QuantumConv1D,
+        QuantumConv2D,
+    )
+
+    _QUANTUM_AVAILABLE = True
+except ImportError:
+    _QUANTUM_AVAILABLE = False
+
+try:
+    from .relativity import (
+        LorentzTransformation,
+        Boost,
+        Rotation,
+        FourVector,
+        MinkowskiMetric,
+        ProperTime,
+        RelativisticParticle,
+        EnergyMomentum,
+        GeodesicEquation,
+        SchwarzschildMetric,
+        KerrMetric,
+        SpacetimeInterval,
+        LightCone,
+        Causality,
+    )
+
+    _RELATIVITY_AVAILABLE = True
+except ImportError:
+    _RELATIVITY_AVAILABLE = False
+
+try:
+    from .algtopo import (
+        SimplicialComplex,
+        Simplex,
+        Chain,
+        Boundary,
+        HomologyGroup,
+        BettiNumbers,
+        Cocycle,
+        Coboundary,
+        CohomologyGroup,
+        CupProduct,
+        DeRhamComplex,
+        VietorisRipsComplex,
+        filtration,
+        persistence_diagram,
+        bottleneck_distance,
+        wasserstein_distance,
+        PersistentHomology,
+    )
+
+    _ALGTOPO_AVAILABLE = True
+except ImportError:
+    _ALGTOPO_AVAILABLE = False
+
+try:
+    from .representation import (
+        LieAlgebra,
+        LieGroup,
+        su2,
+        so3,
+        sl2c,
+        StructureConstants,
+        GroupRepresentation,
+        IrreducibleRepresentation,
+        TensorRepresentation,
+        Character,
+        DirectSum,
+        TensorProduct,
+        WeylGroup,
+        RootSystem,
+        WeightLattice,
+        DynkinDiagram,
+    )
+
+    _REPRESENTATION_AVAILABLE = True
+except ImportError:
+    _REPRESENTATION_AVAILABLE = False
+
 
 __all__ = [
     "MetricTensor",
@@ -180,4 +279,75 @@ __all__ = [
     "CausalGraph",
     "StructuralCausalModel",
     "CausalDiscovery",
+    # Quantum
+    "QuantumCircuit",
+    "Gate",
+    "Hadamard",
+    "CNOT",
+    "RX",
+    "RY",
+    "RZ",
+    "PauliX",
+    "PauliY",
+    "PauliZ",
+    "TensorNetwork",
+    "MPS",
+    "TTN",
+    "PEPS",
+    "QuantumEmbedding",
+    "AmplitudeEmbedding",
+    "AngleEmbedding",
+    "BasicEntanglerLayers",
+    "QuantumConv1D",
+    "QuantumConv2D",
+    # Relativity
+    "LorentzTransformation",
+    "Boost",
+    "Rotation",
+    "FourVector",
+    "MinkowskiMetric",
+    "ProperTime",
+    "RelativisticParticle",
+    "EnergyMomentum",
+    "GeodesicEquation",
+    "SchwarzschildMetric",
+    "KerrMetric",
+    "SpacetimeInterval",
+    "LightCone",
+    "Causality",
+    # Algebraic Topology
+    "SimplicialComplex",
+    "Simplex",
+    "Chain",
+    "Boundary",
+    "HomologyGroup",
+    "BettiNumbers",
+    "Cocycle",
+    "Coboundary",
+    "CohomologyGroup",
+    "CupProduct",
+    "DeRhamComplex",
+    "VietorisRipsComplex",
+    "filtration",
+    "persistence_diagram",
+    "bottleneck_distance",
+    "wasserstein_distance",
+    "PersistentHomology",
+    # Representation Theory
+    "LieAlgebra",
+    "LieGroup",
+    "su2",
+    "so3",
+    "sl2c",
+    "StructureConstants",
+    "GroupRepresentation",
+    "IrreducibleRepresentation",
+    "TensorRepresentation",
+    "Character",
+    "DirectSum",
+    "TensorProduct",
+    "WeylGroup",
+    "RootSystem",
+    "WeightLattice",
+    "DynkinDiagram",
 ]
