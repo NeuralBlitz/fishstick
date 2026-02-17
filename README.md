@@ -1,4 +1,6 @@
-# fishstick
+<img width="480" height="480" alt="image" src="https://github.com/user-attachments/assets/2369e054-b7bf-4ce9-acc2-8b2f3da78416" />
+
+
 
 A mathematically rigorous, physically grounded AI framework synthesizing theoretical physics, formal mathematics, and advanced machine learning.
 
