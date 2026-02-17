@@ -1,0 +1,31 @@
+Metadata-Version: 2.4
+Name: unified_intelligence
+Version: 0.1.0
+Summary: A mathematically rigorous, physically grounded AI framework
+Author: Unified Intelligence Research
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.9
+Requires-Dist: torch>=2.0
+Requires-Dist: numpy>=1.21
+Requires-Dist: scipy>=1.7
+Requires-Dist: pyyaml>=6.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: black>=23.0; extra == "dev"
+Requires-Dist: mypy>=1.0; extra == "dev"
+Provides-Extra: full
+Requires-Dist: gudhi>=3.8; extra == "full"
+Requires-Dist: giotto-tda>=0.6; extra == "full"
+Requires-Dist: kmapper>=2.0; extra == "full"
+Dynamic: author
+Dynamic: classifier
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

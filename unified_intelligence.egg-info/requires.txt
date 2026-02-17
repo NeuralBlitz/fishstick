@@ -1,0 +1,14 @@
+torch>=2.0
+numpy>=1.21
+scipy>=1.7
+pyyaml>=6.0
+
+[dev]
+pytest>=7.0
+black>=23.0
+mypy>=1.0
+
+[full]
+gudhi>=3.8
+giotto-tda>=0.6
+kmapper>=2.0
