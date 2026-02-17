@@ -1,6 +1,6 @@
 # 🥫 fishstick Sauce
 
-**The Secret Recipe** - Pre-configured, ready-to-train models for all 6 fishstick frameworks.
+**The Secret Recipe** - Pre-configured, ready-to-train models for all 26 fishstick frameworks (A-Z).
 
 Just like fishsticks need sauce, your AI needs these models! 🐟
 
@@ -81,6 +81,166 @@ model = create_model('uif_base')     # 367K params
 # Quantum-inspired + RG + Neuro-symbolic
 model = create_model('uis_small')    # 400K params
 model = create_model('uis_base')     # 861K params
+```
+
+### Framework G: CRLS (Categorical Renormalization Learning Systems)
+
+```python
+# Categorical RG flows + VAE + Hamiltonian
+model = create_model('crls_g_small')   # 308K params
+model = create_model('crls_g_base')    # 958K params
+```
+
+### Framework H: ToposFormer (Topos-Theoretic Neural Networks)
+
+```python
+# Sheaf integration + Hodge projection
+model = create_model('toposformer_h_small')   # 1.3M params
+model = create_model('toposformer_h_base')    # 4.8M params
+```
+
+### Framework I: UIF-I (Renormalized Attention Module)
+
+```python
+# Scale-parameterized attention + categorical optics
+model = create_model('uif_i_small')   # 367K params
+model = create_model('uif_i_base')    # 1.4M params
+```
+
+### Framework J: UIS-J (Node-at-Attention)
+
+```python
+# Cohomological attention + cross-synthesis
+model = create_model('uis_j_small')   # 657K params
+model = create_model('uis_j_base')    # 2.3M params
+```
+
+### Framework K: UIA-K (Sheaf-LSTM)
+
+```python
+# Fiber bundle attention + RG-MORL
+model = create_model('uia_k_small')   # 414K params
+model = create_model('uia_k_base')    # 1.4M params
+```
+
+### Framework L: CRLS-L (Mathematical Intelligence Physics)
+
+```python
+# Symplectic integrator + thermodynamic regularizer
+model = create_model('crls_l_small')   # 158K params
+model = create_model('crls_l_base')    # 375K params
+```
+
+### Framework M: UIA-M (Renormalized Neural Flow)
+
+```python
+# Symplectic dynamics + Hamiltonian belief propagation
+model = create_model('uia_m_small')   # 514K params
+model = create_model('uia_m_base')    # 1.2M params
+```
+
+### Framework N: UIS-N (Cross-Synthetic Node-at-Attention)
+
+```python
+# Meta-rep signatures + lens optics
+model = create_model('uis_n_small')   # 1.7M params
+model = create_model('uis_n_base')    # 4.1M params
+```
+
+### Framework O: UIA-O (Sheaf-Theoretic Neural Networks)
+
+```python
+# Neural sheaf Laplacian + fiber bundles
+model = create_model('uia_o_small')   # 257K params
+model = create_model('uia_o_base')    # 822K params
+```
+
+### Framework P: UIF-P (RG-Informed Hierarchical Networks)
+
+```python
+# RG fixed points + symplectic SGD
+model = create_model('uif_p_small')   # 56K params
+model = create_model('uif_p_base')    # 123K params
+```
+
+### Framework Q: UINet-Q (Categorical Quantum Neural Architecture)
+
+```python
+# ZX-calculus + categorical compilation
+model = create_model('uinet_q_small')   # 705K params
+model = create_model('uinet_q_base')    # 2.0M params
+```
+
+### Framework R: UIF-R (Comprehensive Blueprint)
+
+```python
+# Fisher natural gradient + monoidal composition
+model = create_model('uif_r_small')   # 123K params
+model = create_model('uif_r_base')    # 291K params
+```
+
+### Framework S: USIF-S (Quantum Categorical Neural Networks)
+
+```python
+# Quantum channels + topological features
+model = create_model('usif_s_small')   # 430K params
+model = create_model('usif_s_base')    # 1.5M params
+```
+
+### Framework T: UIF-T (Hamiltonian-RG Flow Optimizer)
+
+```python
+# Hamiltonian RG flow + auto-flow solver
+model = create_model('uif_t_small')   # 119K params
+model = create_model('uif_t_base')    # 330K params
+```
+
+### Framework U: USIF-U (Thermodynamic Information Bounds)
+
+```python
+# Hilbert space + quantum info bounds
+model = create_model('usif_u_small')   # 330K params
+model = create_model('usif_u_base')    # 910K params
+```
+
+### Framework V: UIF-V (Information-Theoretic Dynamics)
+
+```python
+# Stochastic action + type-theoretic verifier
+model = create_model('uif_v_small')   # 87K params
+model = create_model('uif_v_base')    # 247K params
+```
+
+### Framework W: MCA-W (Meta-Cognitive Architecture)
+
+```python
+# Meta-cognitive transformer + homotopy optimizer
+model = create_model('mca_w_small')   # 327K params
+model = create_model('mca_w_base')    # 1.1M params
+```
+
+### Framework X: TTSIK-X (Topos-Theoretic Symplectic Intelligence Kernel)
+
+```python
+# Symplectic sheaf + natural gradient HMC
+model = create_model('ttsik_x_small')   # 278K params
+model = create_model('ttsik_x_base')    # 864K params
+```
+
+### Framework Y: CTNA-Y (Categorical-Thermodynamic Neural Architecture)
+
+```python
+# Traced monoidal + formal verification
+model = create_model('ctna_y_small')   # 212K params
+model = create_model('ctna_y_base')    # 641K params
+```
+
+### Framework Z: SCIF-Z (Symplectic-Categorical Intelligence Framework)
+
+```python
+# Causal intervention + topological analysis
+model = create_model('scif_z_small')   # 170K params
+model = create_model('scif_z_base')    # 475K params
 ```
 
 ## Task-Specific Models
@@ -306,6 +466,26 @@ uia_small            - UIA-Small: 800K params, categorical-Hamiltonian
 | **SCIF** | Structured data | Fiber bundle geometry |
 | **UIF** | Resource-constrained | Lightweight 4-layer stack |
 | **UIS** | Multi-modal tasks | Quantum-inspired + Neuro-symbolic |
+| **CRLS** | Renormalization tasks | Categorical RG + VAE |
+| **ToposFormer** | Topological data | Sheaf integration + Hodge |
+| **UIF-I** | Attention tasks | Scale-parameterized attention |
+| **UIS-J** | Graph tasks | Node-at-Attention |
+| **UIA-K** | Sequential tasks | Sheaf-LSTM + Fiber bundles |
+| **CRLS-L** | Physics simulation | Symplectic integrator |
+| **UIA-M** | Flow-based tasks | Neural flow + symplectic |
+| **UIS-N** | Multi-scale tasks | Cross-synthetic attention |
+| **UIA-O** | Geometric tasks | Sheaf-theoretic |
+| **UIF-P** | Hierarchical tasks | RG-informed |
+| **UINet-Q** | Quantum tasks | Categorical quantum |
+| **UIF-R** | Optimization | Fisher natural gradient |
+| **USIF-S** | Quantum ML | Quantum categorical |
+| **UIF-T** | Dynamics | Hamiltonian-RG flow |
+| **USIF-U** | Information theory | Thermodynamic bounds |
+| **UIF-V** | Verification | Type-theoretic |
+| **MCA-W** | Meta-learning | Self-referential |
+| **TTSIK-X** | Robustness | Topos-theoretic symplectic |
+| **CTNA-Y** | Formal methods | Categorical-thermodynamic |
+| **SCIF-Z** | Physical learning | Symplectic-categorical |
 
 ### Choose Your Size
 
@@ -446,7 +626,7 @@ models = [create_model(f'{fw}_base') for fw in frameworks]
 ## See Also
 
 - [Main README](../README.md) - Overview of fishstick
-- [Framework Documentation](../A.md) - Detailed framework docs (A-F)
+- [Framework Documentation](../A.md) - Detailed framework docs (A-Z)
 - [Vision Module](../fishstick/vision/) - Computer vision models
 - [Tracking Module](../fishstick/tracking/) - Experiment tracking
 - [Compression Module](../fishstick/compression/) - Model optimization

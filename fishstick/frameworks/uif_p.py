@@ -44,7 +44,7 @@ class RGLayer_P(nn.Module):
             nn.Sigmoid(),
         )
 
-        self.fixed_point_iter = nn.Parameter(torch.tensor(5))
+        self.fixed_point_iter = nn.Parameter(torch.tensor(5.0))
 
     def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, bool]:
         relevance = self.relevance(x)

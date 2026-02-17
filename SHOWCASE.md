@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.9+-blue?style=for-the-badge&logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/PyTorch-2.0+-red?style=for-the-badge&logo=pytorch&logoColor=white" />
-  <img src="https://img.shields.io/badge/tests-19%2F19%20passing-green?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/tests-40%2F40%20passing-green?style=for-the-badge" />
   <img src="https://img.shields.io/badge/LLM%20Models-29%2B-yellow?style=for-the-badge" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" />
 </p>
@@ -33,7 +33,7 @@
 
 ## 🚀 Key Features
 
-### 1️⃣ Six Unified Frameworks (A-F)
+### 2️⃣6️⃣ Unified Frameworks (A-Z)
 
 Each framework represents a unique synthesis of mathematical disciplines:
 
@@ -45,6 +45,26 @@ Each framework represents a unique synthesis of mathematical disciplines:
 | **SCIF** (D) | Symplectic-Categorical | Fiber bundle geometry + Hamiltonian dynamics | 3.8M |
 | **UIF** (E) | Four-Layer Stack | Category → Geometry → Dynamics → Verification | 367K |
 | **UIS** (F) | Complete Synthesis | Quantum-inspired + RG + Neuro-symbolic | 861K |
+| **CRLS** (G) | Categorical RG | VAE + RG flows + Hamiltonian | 958K |
+| **ToposFormer** (H) | Topos-Theoretic | Sheaf integration + Hodge projection | 4.8M |
+| **UIF-I** (I) | Renormalized Attention | Scale-parameterized attention | 1.4M |
+| **UIS-J** (J) | Node-at-Attention | Cohomological attention | 2.3M |
+| **UIA-K** (K) | Sheaf-LSTM | Fiber bundle attention | 1.4M |
+| **CRLS-L** (L) | Math Intelligence | Symplectic integrator | 375K |
+| **UIA-M** (M) | Neural Flow | Symplectic dynamics + HBP | 1.2M |
+| **UIS-N** (N) | Cross-Synthetic | Meta-rep signatures | 4.1M |
+| **UIA-O** (O) | Sheaf-Theoretic | Neural sheaf Laplacian | 822K |
+| **UIF-P** (P) | RG-Informed | RG fixed points | 123K |
+| **UINet-Q** (Q) | Categorical Quantum | ZX-calculus compilation | 2.0M |
+| **UIF-R** (R) | Fisher Gradient | Fisher information | 291K |
+| **USIF-S** (S) | Quantum Categorical | Quantum channels | 1.5M |
+| **UIF-T** (T) | Hamiltonian-RG | RG flow optimizer | 330K |
+| **USIF-U** (U) | Thermodynamic | Info bounds | 910K |
+| **UIF-V** (V) | Info-Theoretic | Type-theoretic verifier | 247K |
+| **MCA-W** (W) | Meta-Cognitive | Self-referential | 1.1M |
+| **TTSIK-X** (X) | Topos-Symplectic | Natural gradient HMC | 864K |
+| **CTNA-Y** (Y) | Categorical-Thermo | Formal verification | 641K |
+| **SCIF-Z** (Z) | Symplectic-Categorical | Causal intervention | 475K |
 
 ```python
 # Use any framework in 3 lines

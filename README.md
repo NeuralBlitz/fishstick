@@ -10,7 +10,7 @@ A mathematically rigorous, physically grounded AI framework synthesizing theoret
 
 ## Overview
 
-**fishstick** implements 6 unified theoretical frameworks (A-F) that combine:
+**fishstick** implements 26 unified theoretical frameworks (A-Z) that combine:
 
 - 🎯 **Theoretical Physics**: Symmetry, renormalization, variational principles, thermodynamics
 - 📐 **Formal Mathematics**: Category theory, sheaf cohomology, differential geometry, type theory
@@ -211,6 +211,166 @@ model = create_uis(input_dim=784, output_dim=10)
 # 861K parameters - Quantum-inspired + RG + Neuro-symbolic
 ```
 
+### G. CRLS - Categorical Renormalization Learning Systems
+```python
+from fishstick.frameworks.crls import create_crls
+
+model = create_crls(input_dim=784, output_dim=10)
+# 958K parameters - Categorical RG flows + VAE
+```
+
+### H. ToposFormer - Topos-Theoretic Neural Networks
+```python
+from fishstick.frameworks.toposformer import create_toposformer
+
+model = create_toposformer(input_dim=784, output_dim=10)
+# 4.8M parameters - Sheaf integration + Hodge projection
+```
+
+### I. UIF-I - Renormalized Attention Module (RAM)
+```python
+from fishstick.frameworks.uif_i import create_uif_i
+
+model = create_uif_i(input_dim=784, output_dim=10)
+# 1.4M parameters - Scale-parameterized attention
+```
+
+### J. UIS-J - Node-at-Attention Mechanism
+```python
+from fishstick.frameworks.uis_j import create_uis_j
+
+model = create_uis_j(input_dim=784, output_dim=10)
+# 2.3M parameters - Cohomological attention + cross-synthesis
+```
+
+### K. UIA-K - Sheaf-LSTM with Fiber Bundle Attention
+```python
+from fishstick.frameworks.uia_k import create_uia_k
+
+model = create_uia_k(input_dim=784, output_dim=10)
+# 1.4M parameters - Fiber bundle attention + RG-MORL
+```
+
+### L. CRLS-L - Mathematical Intelligence Physics
+```python
+from fishstick.frameworks.crls_l import create_crls_l
+
+model = create_crls_l(input_dim=784, output_dim=10)
+# 375K parameters - Symplectic integrator + thermodynamic
+```
+
+### M. UIA-M - Renormalized Neural Flow
+```python
+from fishstick.frameworks.uia_m import create_uia_m
+
+model = create_uia_m(input_dim=784, output_dim=10)
+# 1.2M parameters - Symplectic dynamics + HBP
+```
+
+### N. UIS-N - Cross-Synthetic Node-at-Attention
+```python
+from fishstick.frameworks.uis_n import create_uis_n
+
+model = create_uis_n(input_dim=784, output_dim=10)
+# 4.1M parameters - Meta-rep signatures + lens optics
+```
+
+### O. UIA-O - Sheaf-Theoretic Neural Networks
+```python
+from fishstick.frameworks.uia_o import create_uia_o
+
+model = create_uia_o(input_dim=784, output_dim=10)
+# 822K parameters - Neural sheaf Laplacian + fiber bundles
+```
+
+### P. UIF-P - RG-Informed Hierarchical Networks
+```python
+from fishstick.frameworks.uif_p import create_uif_p
+
+model = create_uif_p(input_dim=784, output_dim=10)
+# 123K parameters - RG fixed points + symplectic SGD
+```
+
+### Q. UINet-Q - Categorical Quantum Neural Architecture
+```python
+from fishstick.frameworks.uinet_q import create_uinet_q
+
+model = create_uinet_q(input_dim=784, output_dim=10)
+# 2.0M parameters - ZX-calculus + categorical compilation
+```
+
+### R. UIF-R - Comprehensive Blueprint with Fisher Natural Gradient
+```python
+from fishstick.frameworks.uif_r import create_uif_r
+
+model = create_uif_r(input_dim=784, output_dim=10)
+# 291K parameters - Fisher information + monoidal composition
+```
+
+### S. USIF-S - Quantum Categorical Neural Networks (QCNN)
+```python
+from fishstick.frameworks.usif_s import create_usif_s
+
+model = create_usif_s(input_dim=784, output_dim=10)
+# 1.5M parameters - Quantum channels + topological features
+```
+
+### T. UIF-T - Hamiltonian-RG Flow Optimizer
+```python
+from fishstick.frameworks.uif_t import create_uif_t
+
+model = create_uif_t(input_dim=784, output_dim=10)
+# 330K parameters - Hamiltonian RG flow + auto-flow
+```
+
+### U. USIF-U - Thermodynamic Information Bounds
+```python
+from fishstick.frameworks.usif_u import create_usif_u
+
+model = create_usif_u(input_dim=784, output_dim=10)
+# 910K parameters - Hilbert space + quantum info bounds
+```
+
+### V. UIF-V - Information-Theoretic Dynamics
+```python
+from fishstick.frameworks.uif_v import create_uif_v
+
+model = create_uif_v(input_dim=784, output_dim=10)
+# 247K parameters - Stochastic action + type-theoretic verifier
+```
+
+### W. MCA-W - Meta-Cognitive Architecture
+```python
+from fishstick.frameworks.mca_w import create_mca_w
+
+model = create_mca_w(input_dim=784, output_dim=10)
+# 1.1M parameters - Meta-cognitive transformer + homotopy
+```
+
+### X. TTSIK-X - Topos-Theoretic Symplectic Intelligence Kernel
+```python
+from fishstick.frameworks.ttsik_x import create_ttsik_x
+
+model = create_ttsik_x(input_dim=784, output_dim=10)
+# 864K parameters - Symplectic sheaf + natural gradient HMC
+```
+
+### Y. CTNA-Y - Categorical-Thermodynamic Neural Architecture
+```python
+from fishstick.frameworks.ctna_y import create_ctna_y
+
+model = create_ctna_y(input_dim=784, output_dim=10)
+# 641K parameters - Traced monoidal + formal verification
+```
+
+### Z. SCIF-Z - Symplectic-Categorical Intelligence Framework
+```python
+from fishstick.frameworks.scif_z import create_scif_z
+
+model = create_scif_z(input_dim=784, output_dim=10)
+# 475K parameters - Causal intervention + topological analysis
+```
+
 ## Advanced Features
 
 ### Neural ODEs
@@ -372,7 +532,7 @@ fishstick/
 ├── sheaf/             # Sheaf theory
 ├── rg/                # Renormalization group
 ├── verification/      # Formal verification
-├── frameworks/        # 6 unified frameworks
+├── frameworks/        # 26 unified frameworks (A-Z)
 ├── neural_ode/        # Neural ODEs
 ├── graph/             # Geometric GNNs
 ├── probabilistic/     # Bayesian methods
@@ -406,14 +566,23 @@ python -m pytest test_all.py test_advanced.py -v
 
 All frameworks tested on synthetic data:
 
-| Framework | Parameters | Forward Pass | Energy Cons. |
-|-----------|------------|--------------|--------------|
-| UniIntelli | 1.8M | ✓ | ✓ |
-| HSCA | 6.5M | ✓ | ✓ (HNN) |
-| UIA | 1.7M | ✓ | ✓ |
-| SCIF | 3.8M | ✓ | ✓ |
-| UIF | 367K | ✓ | ✓ |
-| UIS | 861K | ✓ | ✓ |
+| Framework | Parameters | Forward Pass | Framework | Parameters | Forward Pass |
+|-----------|------------|--------------|-----------|------------|--------------|
+| UniIntelli | 1.8M | ✓ | UIF-I | 1.4M | ✓ |
+| HSCA | 6.5M | ✓ | UIS-J | 2.3M | ✓ |
+| UIA | 1.7M | ✓ | UIA-K | 1.4M | ✓ |
+| SCIF | 3.8M | ✓ | CRLS-L | 375K | ✓ |
+| UIF | 367K | ✓ | UIA-M | 1.2M | ✓ |
+| UIS | 861K | ✓ | UIS-N | 4.1M | ✓ |
+| CRLS | 958K | ✓ | UIA-O | 822K | ✓ |
+| ToposFormer | 4.8M | ✓ | UIF-P | 123K | ✓ |
+| UINet-Q | 2.0M | ✓ | USIF-S | 1.5M | ✓ |
+| UIF-R | 291K | ✓ | UIF-T | 330K | ✓ |
+| USIF-U | 910K | ✓ | UIF-V | 247K | ✓ |
+| MCA-W | 1.1M | ✓ | TTSIK-X | 864K | ✓ |
+| CTNA-Y | 641K | ✓ | SCIF-Z | 475K | ✓ |
+
+**Total: 26 frameworks, ~27M parameters across all base configurations**
 
 ## Documentation
 
@@ -425,6 +594,26 @@ For detailed mathematical documentation, see:
 - `D.md` - SCIF: Symplectic-Categorical Intelligence Framework
 - `E.md` - UIF: Unified Intelligence Framework
 - `F.md` - UIS: Unified Intelligence Synthesis
+- `G.md` - CRLS: Categorical Renormalization Learning Systems
+- `H.md` - ToposFormer: Topos-Theoretic Neural Networks
+- `I.md` - UIF-I: Renormalized Attention Module
+- `J.md` - UIS-J: Node-at-Attention Mechanism
+- `K.md` - UIA-K: Sheaf-LSTM with Fiber Bundle Attention
+- `L.md` - CRLS-L: Mathematical Intelligence Physics
+- `M.md` - UIA-M: Renormalized Neural Flow
+- `N.md` - UIS-N: Cross-Synthetic Node-at-Attention
+- `O.md` - UIA-O: Sheaf-Theoretic Neural Networks
+- `P.md` - UIF-P: RG-Informed Hierarchical Networks
+- `Q.md` - UINet-Q: Categorical Quantum Neural Architecture
+- `R.md` - UIF-R: Comprehensive Blueprint with Fisher Natural Gradient
+- `S.md` - USIF-S: Quantum Categorical Neural Networks
+- `T.md` - UIF-T: Hamiltonian-RG Flow Optimizer
+- `U.md` - USIF-U: Thermodynamic Information Bounds
+- `V.md` - UIF-V: Information-Theoretic Dynamics
+- `W.md` - MCA-W: Meta-Cognitive Architecture
+- `X.md` - TTSIK-X: Topos-Theoretic Symplectic Intelligence Kernel
+- `Y.md` - CTNA-Y: Categorical-Thermodynamic Neural Architecture
+- `Z.md` - SCIF-Z: Symplectic-Categorical Intelligence Framework
 
 ## Mathematical Foundations
 

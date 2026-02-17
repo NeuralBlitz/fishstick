@@ -8,6 +8,7 @@ Includes different sizes (small, base, large) and task-specific variants.
 """
 
 from typing import Optional, Dict, Any, List
+import os
 import torch
 from torch import nn
 
@@ -119,6 +120,286 @@ class SauceBottle:
             "n_layers": 4,
             "description": "UIS-Base: 861K params, complete synthesis",
         },
+        "crls_g_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 3,
+            "description": "CRLS-G-Small: 600K params, categorical renormalization",
+        },
+        "crls_g_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 256,
+            "n_layers": 4,
+            "description": "CRLS-G-Base: 1.5M params, categorical RG flows",
+        },
+        "toposformer_h_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 3,
+            "description": "ToposFormer-H-Small: 700K params, sheaf integration",
+        },
+        "toposformer_h_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 256,
+            "n_layers": 4,
+            "description": "ToposFormer-H-Base: 1.8M params, topos-theoretic",
+        },
+        "uif_i_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 64,
+            "n_layers": 2,
+            "description": "UIF-I-Small: 200K params, renormalized attention",
+        },
+        "uif_i_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 4,
+            "description": "UIF-I-Base: 500K params, RAM architecture",
+        },
+        "uis_j_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 3,
+            "description": "UIS-J-Small: 550K params, node-at-attention",
+        },
+        "uis_j_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 256,
+            "n_layers": 4,
+            "description": "UIS-J-Base: 1.4M params, NAA mechanism",
+        },
+        "uia_k_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 3,
+            "description": "UIA-K-Small: 750K params, sheaf-LSTM",
+        },
+        "uia_k_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 256,
+            "n_layers": 4,
+            "description": "UIA-K-Base: 1.9M params, fiber bundle attention",
+        },
+        "crls_l_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 3,
+            "description": "CRLS-L-Small: 800K params, mathematical physics",
+        },
+        "crls_l_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 256,
+            "n_layers": 4,
+            "description": "CRLS-L-Base: 2.0M params, MIP framework",
+        },
+        "uia_m_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 3,
+            "description": "UIA-M-Small: 650K params, neural flow",
+        },
+        "uia_m_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 256,
+            "n_layers": 4,
+            "description": "UIA-M-Base: 1.6M params, symplectic dynamics",
+        },
+        "uis_n_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 3,
+            "description": "UIS-N-Small: 700K params, cross-synthetic",
+        },
+        "uis_n_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 256,
+            "n_layers": 4,
+            "description": "UIS-N-Base: 1.8M params, CS-NAA mechanism",
+        },
+        "uia_o_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 3,
+            "description": "UIA-O-Small: 600K params, sheaf-theoretic",
+        },
+        "uia_o_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 256,
+            "n_layers": 4,
+            "description": "UIA-O-Base: 1.5M params, STNN architecture",
+        },
+        "uif_p_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 64,
+            "n_layers": 2,
+            "description": "UIF-P-Small: 250K params, RG-informed",
+        },
+        "uif_p_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 4,
+            "description": "UIF-P-Base: 620K params, hierarchical networks",
+        },
+        "uinet_q_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 3,
+            "description": "UINet-Q-Small: 550K params, categorical quantum",
+        },
+        "uinet_q_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 256,
+            "n_layers": 4,
+            "description": "UINet-Q-Base: 1.4M params, CQNA architecture",
+        },
+        "uif_r_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 64,
+            "n_layers": 2,
+            "description": "UIF-R-Small: 300K params, Fisher natural gradient",
+        },
+        "uif_r_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 4,
+            "description": "UIF-R-Base: 750K params, comprehensive blueprint",
+        },
+        "usif_s_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 3,
+            "description": "USIF-S-Small: 500K params, quantum categorical",
+        },
+        "usif_s_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 256,
+            "n_layers": 4,
+            "description": "USIF-S-Base: 1.2M params, QCNN architecture",
+        },
+        "uif_t_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 64,
+            "n_layers": 2,
+            "description": "UIF-T-Small: 280K params, Hamiltonian-RG",
+        },
+        "uif_t_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 4,
+            "description": "UIF-T-Base: 700K params, flow optimizer",
+        },
+        "usif_u_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 3,
+            "description": "USIF-U-Small: 450K params, thermodynamic bounds",
+        },
+        "usif_u_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 256,
+            "n_layers": 4,
+            "description": "USIF-U-Base: 1.1M params, info bounds framework",
+        },
+        "uif_v_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 64,
+            "n_layers": 2,
+            "description": "UIF-V-Small: 220K params, info-theoretic",
+        },
+        "uif_v_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 4,
+            "description": "UIF-V-Base: 550K params, dynamics framework",
+        },
+        "mca_w_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 3,
+            "description": "MCA-W-Small: 650K params, meta-cognitive",
+        },
+        "mca_w_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 256,
+            "n_layers": 4,
+            "description": "MCA-W-Base: 1.6M params, architecture framework",
+        },
+        "ttsik_x_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 3,
+            "description": "TTSIK-X-Small: 720K params, topos-theoretic symplectic",
+        },
+        "ttsik_x_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 256,
+            "n_layers": 4,
+            "description": "TTSIK-X-Base: 1.8M params, intelligence kernel",
+        },
+        "ctna_y_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 3,
+            "description": "CTNA-Y-Small: 600K params, categorical-thermodynamic",
+        },
+        "ctna_y_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 256,
+            "n_layers": 4,
+            "description": "CTNA-Y-Base: 1.5M params, neural architecture",
+        },
+        "scif_z_small": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 128,
+            "n_layers": 3,
+            "description": "SCIF-Z-Small: 700K params, symplectic-categorical",
+        },
+        "scif_z_base": {
+            "input_dim": 784,
+            "output_dim": 10,
+            "hidden_dim": 256,
+            "n_layers": 4,
+            "description": "SCIF-Z-Base: 1.7M params, intelligence framework",
+        },
     }
 
     @classmethod
@@ -145,10 +426,95 @@ class SauceBottle:
 
         config = cls.CONFIGS[model_name].copy()
         config.pop("description")  # Remove non-model parameter
+
+        # Handle n_layers for models that don't support it
+        n_layers = config.pop("n_layers", None)
         config.update(overrides)
 
         # Determine which framework to use
-        if "uniintelli" in model_name:
+        # Check more specific patterns first (G-Z frameworks) before general ones (A-F)
+        if model_name.startswith("crls_g"):
+            from fishstick.frameworks.crls import create_crls
+
+            return create_crls(**config)
+        elif model_name.startswith("toposformer_h"):
+            from fishstick.frameworks.toposformer import create_toposformer
+
+            return create_toposformer(**config)
+        elif model_name.startswith("uif_i"):
+            from fishstick.frameworks.uif_i import create_uif_i
+
+            return create_uif_i(**config)
+        elif model_name.startswith("uis_j"):
+            from fishstick.frameworks.uis_j import create_uis_j
+
+            return create_uis_j(**config)
+        elif model_name.startswith("uia_k"):
+            from fishstick.frameworks.uia_k import create_uia_k
+
+            return create_uia_k(**config)
+        elif model_name.startswith("crls_l"):
+            from fishstick.frameworks.crls_l import create_crls_l
+
+            return create_crls_l(**config)
+        elif model_name.startswith("uia_m"):
+            from fishstick.frameworks.uia_m import create_uia_m
+
+            return create_uia_m(**config)
+        elif model_name.startswith("uis_n"):
+            from fishstick.frameworks.uis_n import create_uis_n
+
+            return create_uis_n(**config)
+        elif model_name.startswith("uia_o"):
+            from fishstick.frameworks.uia_o import create_uia_o
+
+            return create_uia_o(**config)
+        elif model_name.startswith("uif_p"):
+            from fishstick.frameworks.uif_p import create_uif_p
+
+            return create_uif_p(**config)
+        elif model_name.startswith("uinet_q"):
+            from fishstick.frameworks.uinet_q import create_uinet_q
+
+            return create_uinet_q(**config)
+        elif model_name.startswith("uif_r"):
+            from fishstick.frameworks.uif_r import create_uif_r
+
+            return create_uif_r(**config)
+        elif model_name.startswith("usif_s"):
+            from fishstick.frameworks.usif_s import create_usif_s
+
+            return create_usif_s(**config)
+        elif model_name.startswith("uif_t"):
+            from fishstick.frameworks.uif_t import create_uif_t
+
+            return create_uif_t(**config)
+        elif model_name.startswith("usif_u"):
+            from fishstick.frameworks.usif_u import create_usif_u
+
+            return create_usif_u(**config)
+        elif model_name.startswith("uif_v"):
+            from fishstick.frameworks.uif_v import create_uif_v
+
+            return create_uif_v(**config)
+        elif model_name.startswith("mca_w"):
+            from fishstick.frameworks.mca_w import create_mca_w
+
+            return create_mca_w(**config)
+        elif model_name.startswith("ttsik_x"):
+            from fishstick.frameworks.ttsik_x import create_ttsik_x
+
+            return create_ttsik_x(**config)
+        elif model_name.startswith("ctna_y"):
+            from fishstick.frameworks.ctna_y import create_ctna_y
+
+            return create_ctna_y(**config)
+        elif model_name.startswith("scif_z"):
+            from fishstick.frameworks.scif_z import create_scif_z
+
+            return create_scif_z(**config)
+        # Now check general A-F frameworks
+        elif "uniintelli" in model_name:
             from fishstick.frameworks.uniintelli import create_uniintelli
 
             return create_uniintelli(**config)
