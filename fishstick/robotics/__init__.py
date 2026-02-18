@@ -48,6 +48,56 @@ from fishstick.robotics.dynamics import (
     InverseDynamics,
     GravityCompensation,
 )
+from fishstick.robotics.slam import (
+    # Core Types
+    SE3Pose,
+    Landmark,
+    KeyFrame,
+    PointCloud,
+    IMUData,
+    SLAMState,
+    SensorType,
+    SLAMMode,
+    # Visual SLAM
+    VisualSLAM,
+    ORBSLAM,
+    LSDSLAM,
+    DirectSparseOdometry,
+    SemiDirectVisualOdometry,
+    LoopClosureSLAM,
+    # LiDAR SLAM
+    LiDARSLAM,
+    LOAM,
+    LeGOLiDARSLAM,
+    Cartographer,
+    HectorSLAM,
+    # Visual-Inertial SLAM
+    VisualInertialSLAM,
+    VINSMono,
+    VINSFusion,
+    OKVIS,
+    MSCKF,
+    # Loop Closure
+    LoopClosureDetector,
+    DBoW2,
+    FABMAP,
+    ScanContext,
+    NetVLAD,
+    # Mapping
+    OccupancyGrid,
+    OctoMap,
+    VoxelGrid,
+    PointCloudMap,
+    # State Estimation
+    StateEstimator,
+    EKF_SLAM,
+    UKF_SLAM,
+    ParticleFilterSLAM,
+    # Optimization
+    PoseGraphOptimization,
+    BundleAdjustment,
+    FactorGraph,
+)
 
 __all__ = [
     # PID Controllers
@@ -83,4 +133,52 @@ __all__ = [
     "ForwardKinematics",
     "InverseDynamics",
     "GravityCompensation",
+    # SLAM Core Types
+    "SE3Pose",
+    "Landmark",
+    "KeyFrame",
+    "PointCloud",
+    "IMUData",
+    "SLAMState",
+    "SensorType",
+    "SLAMMode",
+    # Visual SLAM
+    "VisualSLAM",
+    "ORBSLAM",
+    "LSDSLAM",
+    "DirectSparseOdometry",
+    "SemiDirectVisualOdometry",
+    "LoopClosureSLAM",
+    # LiDAR SLAM
+    "LiDARSLAM",
+    "LOAM",
+    "LeGOLiDARSLAM",
+    "Cartographer",
+    "HectorSLAM",
+    # Visual-Inertial SLAM
+    "VisualInertialSLAM",
+    "VINSMono",
+    "VINSFusion",
+    "OKVIS",
+    "MSCKF",
+    # Loop Closure
+    "LoopClosureDetector",
+    "DBoW2",
+    "FABMAP",
+    "ScanContext",
+    "NetVLAD",
+    # Mapping
+    "OccupancyGrid",
+    "OctoMap",
+    "VoxelGrid",
+    "PointCloudMap",
+    # State Estimation
+    "StateEstimator",
+    "EKF_SLAM",
+    "UKF_SLAM",
+    "ParticleFilterSLAM",
+    # Optimization
+    "PoseGraphOptimization",
+    "BundleAdjustment",
+    "FactorGraph",
 ]

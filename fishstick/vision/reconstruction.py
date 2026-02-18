@@ -1426,3 +1426,1462 @@ class InstantNGP(nn.Module):
         rgb = torch.sigmoid(self.color_mlp(color_input))
         
         return rgb, sigma
+
+class PlenOctrees(nn.Module):
+    """
+    PlenOctrees for Real-time Neural Radiance Fields
+    Reference: Yu et al., "PlenOctrees for Real-time Rendering of Neural Radiance Fields"
+    """
+    
+    def __init__(self, base_resolution: int = 128, max_depth: int = 8, threshold: float = 0.01):
+        super().__init__()
+        
+        self.base_resolution = base_resolution
+        self.max_depth = max_depth
+        self.threshold = threshold
+        
+        self.octree = {}
+        self.leaf_nodes = []
+        
+    def from_nerf(self, nerf_model: NeRF, bbox_min: torch.Tensor, bbox_max: torch.Tensor):
+        """Convert trained NeRF to PlenOctree"""
+        self.nerf_model = nerf_model
+        self.bbox_min = bbox_min
+        self.bbox_max = bbox_max
+        
+        self._subdivide_octree(
+            torch.zeros(3, device=bbox_min.device),
+            (bbox_max - bbox_min).max() / 2,
+            depth=0
+        )
+        
+    def _subdivide_octree(self, center: torch.Tensor, size: float, depth: int):
+        """Recursively subdivide octree nodes"""
+        if depth >= self.max_depth:
+            node_data = self._sample_nerf(center, size)
+            self.leaf_nodes.append({
+                'center': center,
+                'size': size,
+                'data': node_data
+            })
+            return
+        
+        avg_density = self._estimate_density(center, size)
+        
+        if avg_density < self.threshold:
+            return
+        
+        offsets = [
+            torch.tensor([dx, dy, dz], device=center.device) * size / 2
+            for dx in [-1, 1]
+            for dy in [-1, 1]
+            for dz in [-1, 1]
+        ]
+        
+        for offset in offsets:
+            child_center = center + offset
+            self._subdivide_octree(child_center, size / 2, depth + 1)
+    
+    def _sample_nerf(self, center: torch.Tensor, size: float) -> Dict[str, torch.Tensor]:
+        """Sample NeRF at octree node"""
+        with torch.no_grad():
+            directions = self._uniform_sphere_samples(8)
+            rgb_list = []
+            sigma_list = []
+            
+            for direction in directions:
+                rgb, sigma = self.nerf_model(center.unsqueeze(0), direction.unsqueeze(0))
+                rgb_list.append(rgb)
+                sigma_list.append(sigma)
+            
+            avg_rgb = torch.stack(rgb_list).mean(dim=0)
+            avg_sigma = torch.stack(sigma_list).mean(dim=0)
+        
+        return {
+            'rgb': avg_rgb,
+            'sigma': avg_sigma
+        }
+    
+    def _estimate_density(self, center: torch.Tensor, size: float) -> float:
+        """Estimate average density in octree node"""
+        with torch.no_grad():
+            _, sigma = self.nerf_model(center.unsqueeze(0), torch.zeros(1, 3, device=center.device))
+            return F.relu(sigma).item()
+    
+    def _uniform_sphere_samples(self, n_samples: int) -> torch.Tensor:
+        """Generate uniform samples on sphere"""
+        indices = torch.arange(n_samples, dtype=torch.float32)
+        phi = torch.acos(1 - 2 * (indices + 0.5) / n_samples)
+        theta = np.pi * (1 + 5**0.5) * indices
+        
+        x = torch.sin(phi) * torch.cos(theta)
+        y = torch.sin(phi) * torch.sin(theta)
+        z = torch.cos(phi)
+        
+        return torch.stack([x, y, z], dim=-1)
+    
+    def query(self, positions: torch.Tensor, directions: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Query octree at positions"""
+        rgb_list = []
+        sigma_list = []
+        
+        for pos in positions:
+            leaf_data = self._find_leaf(pos)
+            
+            if leaf_data is not None:
+                rgb_list.append(leaf_data['rgb'])
+                sigma_list.append(leaf_data['sigma'])
+            else:
+                rgb_list.append(torch.zeros(1, 3, device=positions.device))
+                sigma_list.append(torch.zeros(1, 1, device=positions.device))
+        
+        return torch.cat(rgb_list, dim=0), torch.cat(sigma_list, dim=0)
+    
+    def _find_leaf(self, position: torch.Tensor) -> Optional[Dict]:
+        """Find leaf node containing position"""
+        for leaf in self.leaf_nodes:
+            dist = (position - leaf['center']).abs().max()
+            if dist <= leaf['size']:
+                return leaf['data']
+        return None
+
+
+class NeuS(nn.Module):
+    """
+    NeuS: Learning Neural Implicit Surfaces by Volume Rendering
+    Reference: Wang et al., NeurIPS 2021
+    """
+    
+    def __init__(
+        self,
+        pos_encoding_L: int = 10,
+        hidden_dim: int = 256,
+        num_layers: int = 8,
+        init_variance: float = 0.3
+    ):
+        super().__init__()
+        
+        self.pos_encoding_L = pos_encoding_L
+        
+        pos_dim = 3 * 2 * pos_encoding_L
+        self.sdf_net = self._build_sdf_network(pos_dim, hidden_dim, num_layers)
+        
+        self.color_net = self._build_color_network(hidden_dim)
+        
+        self.variance = nn.Parameter(torch.tensor(init_variance))
+        
+    def _build_sdf_network(self, input_dim: int, hidden_dim: int, num_layers: int) -> nn.Module:
+        layers = []
+        in_dim = input_dim
+        
+        for i in range(num_layers):
+            if i == 4:
+                in_dim += input_dim
+            
+            layers.append(nn.Linear(in_dim, hidden_dim))
+            layers.append(nn.ReLU(inplace=True))
+            in_dim = hidden_dim
+        
+        layers.append(nn.Linear(hidden_dim, 257))
+        
+        return nn.Sequential(*layers)
+    
+    def _build_color_network(self, hidden_dim: int) -> nn.Module:
+        return nn.Sequential(
+            nn.Linear(256 + 3 * 2 * 4 + 3, hidden_dim // 2),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim // 2, 3),
+            nn.Sigmoid()
+        )
+    
+    def forward(
+        self,
+        positions: torch.Tensor,
+        directions: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Forward pass"""
+        pos_encoded = NeRF().positional_encoding(positions, self.pos_encoding_L)
+        dir_encoded = NeRF().positional_encoding(directions, 4)
+        
+        h = self.sdf_net(pos_encoded)
+        sdf = h[:, :1]
+        features = h[:, 1:]
+        
+        if self.training:
+            normal = torch.autograd.grad(
+                sdf.sum(),
+                positions,
+                create_graph=True,
+                retain_graph=True
+            )[0]
+            normal = F.normalize(normal, dim=-1)
+        else:
+            normal = torch.zeros_like(positions)
+        
+        color_input = torch.cat([features, dir_encoded, normal], dim=-1)
+        rgb = self.color_net(color_input)
+        
+        return rgb, sdf
+    
+    def sdf_to_density(self, sdf: torch.Tensor) -> torch.Tensor:
+        """Convert SDF to density using learned CDF"""
+        return torch.sigmoid(-sdf / self.variance.abs()) * self.variance.abs()
+    
+    def render_rays(
+        self,
+        ray_origins: torch.Tensor,
+        ray_directions: torch.Tensor,
+        near: float = 0.0,
+        far: float = 3.0,
+        num_samples: int = 64,
+        num_fine_samples: int = 64
+    ) -> Dict[str, torch.Tensor]:
+        """Render rays using SDF-based volume rendering"""
+        device = ray_origins.device
+        N_rays = ray_origins.shape[0]
+        
+        t = torch.linspace(near, far, num_samples, device=device).expand(N_rays, num_samples)
+        if self.training:
+            t = t + torch.rand_like(t) * (far - near) / num_samples
+        
+        points = ray_origins.unsqueeze(1) + t.unsqueeze(-1) * ray_directions.unsqueeze(1)
+        
+        points_flat = points.reshape(-1, 3)
+        points_flat.requires_grad_(True)
+        
+        dirs_flat = ray_directions.unsqueeze(1).expand(-1, num_samples, -1).reshape(-1, 3)
+        
+        rgb, sdf = self.forward(points_flat, dirs_flat)
+        sigma = self.sdf_to_density(sdf)
+        
+        rgb = rgb.reshape(N_rays, num_samples, 3)
+        sigma = sigma.reshape(N_rays, num_samples)
+        
+        result = NeRF().volume_rendering(rgb, sigma, t)
+        
+        return result
+
+# =============================================================================
+# Depth Estimation
+# =============================================================================
+
+class MonocularDepth(nn.Module):
+    """Monocular depth estimation network"""
+    
+    def __init__(
+        self,
+        encoder: str = 'resnet50',
+        pretrained: bool = True,
+        min_depth: float = 0.1,
+        max_depth: float = 100.0
+    ):
+        super().__init__()
+        
+        self.min_depth = min_depth
+        self.max_depth = max_depth
+        
+        import torchvision.models as models
+        if encoder == 'resnet50':
+            resnet = models.resnet50(pretrained=pretrained)
+        elif encoder == 'resnet18':
+            resnet = models.resnet18(pretrained=pretrained)
+        else:
+            raise ValueError(f"Unknown encoder: {encoder}")
+        
+        self.encoder_layers = nn.ModuleList([
+            nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu),
+            resnet.layer1,
+            resnet.layer2,
+            resnet.layer3,
+            resnet.layer4
+        ])
+        
+        self.decoder = DepthDecoder(num_ch_enc=[64, 256, 512, 1024, 2048])
+        
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Estimate depth from single image"""
+        features = []
+        h = x
+        for layer in self.encoder_layers:
+            h = layer(h)
+            features.append(h)
+        
+        depth = self.decoder(features)
+        depth = self.min_depth + (self.max_depth - self.min_depth) * torch.sigmoid(depth)
+        
+        return depth
+
+
+class DepthDecoder(nn.Module):
+    """Decoder for monocular depth estimation"""
+    
+    def __init__(self, num_ch_enc: List[int], num_ch_dec: List[int] = [256, 128, 64, 32, 16]):
+        super().__init__()
+        
+        self.upconvs = nn.ModuleList()
+        self.iconvs = nn.ModuleList()
+        
+        for i in range(len(num_ch_dec)):
+            ch_in = num_ch_enc[-(i+1)] if i == 0 else num_ch_dec[i-1]
+            ch_skip = num_ch_enc[-(i+2)] if i < len(num_ch_enc) - 1 else 0
+            ch_out = num_ch_dec[i]
+            
+            self.upconvs.append(nn.ConvTranspose2d(ch_in, ch_out, 3, stride=2, padding=1, output_padding=1))
+            self.iconvs.append(nn.Conv2d(ch_out + ch_skip, ch_out, 3, padding=1))
+        
+        self.output_conv = nn.Conv2d(num_ch_dec[-1], 1, 3, padding=1)
+        
+    def forward(self, features: List[torch.Tensor]) -> torch.Tensor:
+        x = features[-1]
+        
+        for i in range(len(self.upconvs)):
+            x = self.upconvs[i](x)
+            x = F.relu(x, inplace=True)
+            
+            if i < len(features) - 1:
+                skip = features[-(i+2)]
+                if x.shape[2:] != skip.shape[2:]:
+                    x = F.interpolate(x, size=skip.shape[2:], mode='bilinear', align_corners=True)
+                x = torch.cat([x, skip], dim=1)
+            
+            x = F.relu(self.iconvs[i](x), inplace=True)
+        
+        return self.output_conv(x)
+
+
+class StereoDepth(nn.Module):
+    """Stereo depth estimation using cost volume"""
+    
+    def __init__(self, max_disparity: int = 192, feature_dim: int = 32):
+        super().__init__()
+        
+        self.max_disparity = max_disparity
+        
+        self.feature_extractor = nn.Sequential(
+            nn.Conv2d(3, 32, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, feature_dim, 3, padding=1)
+        )
+        
+        self.cost_volume_net = nn.Sequential(
+            nn.Conv3d(feature_dim * 2, 64, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(64, 32, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(32, 1, 3, padding=1)
+        )
+        
+        self.refinement = nn.Sequential(
+            nn.Conv2d(3, 32, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 1, 3, padding=1)
+        )
+        
+    def forward(self, left: torch.Tensor, right: torch.Tensor) -> torch.Tensor:
+        """Estimate depth from stereo pair"""
+        B, C, H, W = left.shape
+        
+        left_feat = self.feature_extractor(left)
+        right_feat = self.feature_extractor(right)
+        
+        cost_volume = self.build_cost_volume(left_feat, right_feat)
+        
+        cost = self.cost_volume_net(cost_volume)
+        
+        disparity_values = torch.arange(self.max_disparity, device=left.device).float()
+        prob_volume = F.softmax(cost.squeeze(1), dim=1)
+        disparity = torch.sum(prob_volume * disparity_values.view(1, -1, 1, 1), dim=1, keepdim=True)
+        
+        combined = torch.cat([left, disparity], dim=1)
+        residual = self.refinement(combined)
+        disparity = disparity + residual
+        
+        return disparity
+    
+    def build_cost_volume(self, left_feat: torch.Tensor, right_feat: torch.Tensor) -> torch.Tensor:
+        """Build 3D cost volume from stereo features"""
+        B, C, H, W = left_feat.shape
+        
+        cost_volume = []
+        for d in range(self.max_disparity):
+            if d > 0:
+                right_shifted = torch.zeros_like(right_feat)
+                right_shifted[:, :, :, d:] = right_feat[:, :, :, :-d]
+            else:
+                right_shifted = right_feat
+            
+            cost = torch.cat([left_feat, right_shifted], dim=1)
+            cost_volume.append(cost)
+        
+        cost_volume = torch.stack(cost_volume, dim=2)
+        
+        return cost_volume
+
+
+class MultiViewDepth(nn.Module):
+    """Multi-view depth estimation using plane sweep stereo"""
+    
+    def __init__(
+        self,
+        num_depths: int = 128,
+        min_depth: float = 0.1,
+        max_depth: float = 100.0,
+        feature_dim: int = 32
+    ):
+        super().__init__()
+        
+        self.num_depths = num_depths
+        self.min_depth = min_depth
+        self.max_depth = max_depth
+        
+        self.feature_net = nn.Sequential(
+            nn.Conv2d(3, 32, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, feature_dim, 3, padding=1)
+        )
+        
+        self.cost_reg = nn.Sequential(
+            nn.Conv3d(feature_dim, 32, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(32, 16, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(16, 1, 3, padding=1)
+        )
+        
+    def forward(
+        self,
+        ref_image: torch.Tensor,
+        src_images: List[torch.Tensor],
+        poses: List[torch.Tensor],
+        intrinsics: torch.Tensor
+    ) -> torch.Tensor:
+        """Estimate depth from multiple views"""
+        ref_feat = self.feature_net(ref_image)
+        src_feats = [self.feature_net(img) for img in src_images]
+        
+        depth_values = torch.linspace(self.min_depth, self.max_depth, self.num_depths, device=ref_image.device)
+        cost_volume = self.build_cost_volume(ref_feat, src_feats, poses, intrinsics, depth_values)
+        
+        prob_volume = self.cost_reg(cost_volume)
+        
+        prob_norm = F.softmax(prob_volume.squeeze(1), dim=1)
+        depth = torch.sum(prob_norm * depth_values.view(1, -1, 1, 1), dim=1, keepdim=True)
+        
+        return depth
+    
+    def build_cost_volume(
+        self,
+        ref_feat: torch.Tensor,
+        src_feats: List[torch.Tensor],
+        poses: List[torch.Tensor],
+        intrinsics: torch.Tensor,
+        depth_values: torch.Tensor
+    ) -> torch.Tensor:
+        """Build cost volume through plane sweep"""
+        B, C, H, W = ref_feat.shape
+        D = len(depth_values)
+        num_src = len(src_feats)
+        
+        cost_volume = torch.zeros(B, C, D, H, W, device=ref_feat.device)
+        
+        for src_feat, pose in zip(src_feats, poses):
+            for i, depth in enumerate(depth_values):
+                warped = self.warp_features(src_feat, pose, intrinsics, depth)
+                cost = torch.abs(ref_feat - warped)
+                cost_volume[:, :, i] += cost
+        
+        return cost_volume / num_src
+    
+    def warp_features(
+        self,
+        src_feat: torch.Tensor,
+        pose: torch.Tensor,
+        intrinsics: torch.Tensor,
+        depth: float
+    ) -> torch.Tensor:
+        """Warp source features to reference view at given depth"""
+        B, C, H, W = src_feat.shape
+        device = src_feat.device
+        
+        y, x = torch.meshgrid(
+            torch.arange(H, device=device, dtype=torch.float32),
+            torch.arange(W, device=device, dtype=torch.float32),
+            indexing='ij'
+        )
+        
+        points = torch.stack([x, y, torch.ones_like(x)], dim=-1) * depth
+        points_cam = torch.inverse(intrinsics) @ points.reshape(-1, 3).T
+        
+        points_world = torch.inverse(pose) @ torch.cat([points_cam, torch.ones(1, H*W, device=device)], dim=0)
+        points_src = (pose @ points_world)[:3]
+        
+        points_2d = (intrinsics @ points_src).T
+        points_2d = points_2d[:, :2] / (points_2d[:, 2:3] + 1e-8)
+        
+        grid = points_2d.reshape(1, H, W, 2)
+        grid[..., 0] = 2.0 * grid[..., 0] / (W - 1) - 1.0
+        grid[..., 1] = 2.0 * grid[..., 1] / (H - 1) - 1.0
+        
+        warped = F.grid_sample(src_feat, grid, mode='bilinear', padding_mode='zeros', align_corners=True)
+        
+        return warped
+
+# =============================================================================
+# Point Cloud Processing
+# =============================================================================
+
+class PointCloudRegistration:
+    """
+    Point cloud registration using ICP and variants
+    Supports Point-to-Point and Point-to-Plane ICP
+    """
+    
+    def __init__(
+        self,
+        method: str = 'point_to_plane',
+        max_iterations: int = 50,
+        tolerance: float = 1e-6,
+        rejection_threshold: float = 3.0
+    ):
+        self.method = method
+        self.max_iterations = max_iterations
+        self.tolerance = tolerance
+        self.rejection_threshold = rejection_threshold
+        
+    def register(
+        self,
+        source: torch.Tensor,
+        target: torch.Tensor,
+        init_transform: Optional[torch.Tensor] = None
+    ) -> Dict[str, torch.Tensor]:
+        """Register source point cloud to target"""
+        if init_transform is None:
+            transform = torch.eye(4, device=source.device)
+        else:
+            transform = init_transform.clone()
+        
+        prev_error = float('inf')
+        
+        for iteration in range(self.max_iterations):
+            correspondences = self.find_correspondences(source, target, transform)
+            
+            if self.rejection_threshold > 0:
+                correspondences = self.reject_outliers(source, target, correspondences, transform)
+            
+            if self.method == 'point_to_point':
+                delta_transform = self.compute_point_to_point_transform(source, target, correspondences)
+            elif self.method == 'point_to_plane':
+                delta_transform = self.compute_point_to_plane_transform(source, target, correspondences)
+            else:
+                raise ValueError(f"Unknown method: {self.method}")
+            
+            transform = delta_transform @ transform
+            
+            error = self.compute_error(source, target, correspondences, transform)
+            
+            if abs(prev_error - error) < self.tolerance:
+                break
+            
+            prev_error = error
+        
+        source_homo = torch.cat([source, torch.ones(source.shape[0], 1, device=source.device)], dim=-1)
+        aligned = (transform @ source_homo.T).T[:, :3]
+        
+        return {
+            'transform': transform,
+            'aligned_source': aligned,
+            'rmse': torch.sqrt(error),
+            'converged': iteration < self.max_iterations - 1,
+            'iterations': iteration + 1
+        }
+    
+    def find_correspondences(
+        self,
+        source: torch.Tensor,
+        target: torch.Tensor,
+        transform: torch.Tensor
+    ) -> torch.Tensor:
+        """Find nearest neighbor correspondences"""
+        source_homo = torch.cat([source, torch.ones(source.shape[0], 1, device=source.device)], dim=-1)
+        source_transformed = (transform @ source_homo.T).T[:, :3]
+        
+        distances = torch.cdist(source_transformed, target)
+        correspondences = torch.argmin(distances, dim=1)
+        
+        return correspondences
+    
+    def reject_outliers(
+        self,
+        source: torch.Tensor,
+        target: torch.Tensor,
+        correspondences: torch.Tensor,
+        transform: torch.Tensor
+    ) -> torch.Tensor:
+        """Reject outlier correspondences based on distance"""
+        source_homo = torch.cat([source, torch.ones(source.shape[0], 1, device=source.device)], dim=-1)
+        source_transformed = (transform @ source_homo.T).T[:, :3]
+        
+        target_correspondences = target[correspondences]
+        distances = (source_transformed - target_correspondences).norm(dim=-1)
+        
+        median_distance = torch.median(distances)
+        threshold = self.rejection_threshold * median_distance
+        
+        inlier_mask = distances < threshold
+        
+        filtered_correspondences = correspondences.clone()
+        filtered_correspondences[~inlier_mask] = -1
+        
+        return filtered_correspondences
+    
+    def compute_point_to_point_transform(
+        self,
+        source: torch.Tensor,
+        target: torch.Tensor,
+        correspondences: torch.Tensor
+    ) -> torch.Tensor:
+        """Compute rigid transformation using point-to-point correspondences"""
+        valid_mask = correspondences >= 0
+        source_valid = source[valid_mask]
+        target_valid = target[correspondences[valid_mask]]
+        
+        if len(source_valid) < 3:
+            return torch.eye(4, device=source.device)
+        
+        source_centroid = source_valid.mean(dim=0)
+        target_centroid = target_valid.mean(dim=0)
+        
+        source_centered = source_valid - source_centroid
+        target_centered = target_valid - target_centroid
+        
+        H = source_centered.T @ target_centered
+        U, S, Vt = torch.svd(H)
+        R = Vt @ U.T
+        
+        if torch.det(R) < 0:
+            Vt[-1, :] *= -1
+            R = Vt @ U.T
+        
+        t = target_centroid - R @ source_centroid
+        
+        transform = torch.eye(4, device=source.device)
+        transform[:3, :3] = R
+        transform[:3, 3] = t
+        
+        return transform
+    
+    def compute_point_to_plane_transform(
+        self,
+        source: torch.Tensor,
+        target: torch.Tensor,
+        correspondences: torch.Tensor
+    ) -> torch.Tensor:
+        """Compute transformation using point-to-plane ICP"""
+        valid_mask = correspondences >= 0
+        source_valid = source[valid_mask]
+        target_valid = target[correspondences[valid_mask]]
+        
+        if len(source_valid) < 3:
+            return torch.eye(4, device=source.device)
+        
+        target_normals = self.estimate_normals(target)
+        target_normals_valid = target_normals[correspondences[valid_mask]]
+        
+        A = torch.zeros(len(source_valid), 6, device=source.device)
+        b = torch.zeros(len(source_valid), device=source.device)
+        
+        for i, (s, t, n) in enumerate(zip(source_valid, target_valid, target_normals_valid)):
+            A[i, :3] = torch.cross(s, n)
+            A[i, 3:] = n
+            b[i] = (t - s) @ n
+        
+        x = torch.linalg.lstsq(A, b).solution
+        
+        rotation = self.exp_so3(x[:3])
+        translation = x[3:]
+        
+        transform = torch.eye(4, device=source.device)
+        transform[:3, :3] = rotation
+        transform[:3, 3] = translation
+        
+        return transform
+    
+    def estimate_normals(self, points: torch.Tensor, k: int = 10) -> torch.Tensor:
+        """Estimate normals using PCA on k-nearest neighbors"""
+        normals = torch.zeros_like(points)
+        
+        for i in range(len(points)):
+            distances = torch.cdist(points[i:i+1], points).squeeze()
+            _, indices = torch.topk(distances, k, largest=False)
+            neighbors = points[indices]
+            
+            centered = neighbors - neighbors.mean(dim=0)
+            cov = centered.T @ centered
+            
+            _, eigvecs = torch.linalg.eigh(cov)
+            normals[i] = eigvecs[:, 0]
+        
+        return normals
+    
+    def exp_so3(self, omega: torch.Tensor) -> torch.Tensor:
+        """Exponential map from so(3) to SO(3)"""
+        theta = omega.norm()
+        if theta < 1e-6:
+            return torch.eye(3, device=omega.device) + self.skew(omega)
+        
+        K = self.skew(omega / theta)
+        return torch.eye(3, device=omega.device) + torch.sin(theta) * K + (1 - torch.cos(theta)) * K @ K
+    
+    def skew(self, v: torch.Tensor) -> torch.Tensor:
+        """Convert vector to skew-symmetric matrix"""
+        return torch.tensor([
+            [0, -v[2], v[1]],
+            [v[2], 0, -v[0]],
+            [-v[1], v[0], 0]
+        ], device=v.device)
+    
+    def compute_error(
+        self,
+        source: torch.Tensor,
+        target: torch.Tensor,
+        correspondences: torch.Tensor,
+        transform: torch.Tensor
+    ) -> torch.Tensor:
+        """Compute mean squared error"""
+        valid_mask = correspondences >= 0
+        if valid_mask.sum() == 0:
+            return torch.tensor(float('inf'), device=source.device)
+        
+        source_homo = torch.cat([source, torch.ones(source.shape[0], 1, device=source.device)], dim=-1)
+        source_transformed = (transform @ source_homo.T).T[:, :3]
+        
+        target_correspondences = target[correspondences[valid_mask]]
+        diff = source_transformed[valid_mask] - target_correspondences
+        
+        return (diff ** 2).mean()
+
+class PointCloudFusion:
+    """
+    Point cloud fusion from multiple views
+    Implements truncated signed distance function (TSDF) fusion
+    """
+    
+    def __init__(
+        self,
+        voxel_size: float = 0.01,
+        truncation_distance: float = 0.03,
+        volume_bounds: Tuple[Tuple[float, float], ...] = ((-1, 1), (-1, 1), (-1, 1))
+    ):
+        self.voxel_size = voxel_size
+        self.truncation_distance = truncation_distance
+        self.volume_bounds = volume_bounds
+        
+        self.init_volume()
+        
+    def init_volume(self):
+        """Initialize TSDF volume"""
+        self.volume_dims = [
+            int((bounds[1] - bounds[0]) / self.voxel_size)
+            for bounds in self.volume_bounds
+        ]
+        
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.tsdf_volume = torch.ones(self.volume_dims, device=device)
+        self.weight_volume = torch.zeros(self.volume_dims, device=device)
+        self.color_volume = torch.zeros((*self.volume_dims, 3), device=device)
+        
+    def integrate(
+        self,
+        depth_map: torch.Tensor,
+        color_map: Optional[torch.Tensor],
+        pose: torch.Tensor,
+        intrinsics: torch.Tensor
+    ):
+        """Integrate depth map into TSDF volume"""
+        device = depth_map.device
+        H, W = depth_map.shape
+        
+        for z in range(self.volume_dims[2]):
+            for y in range(self.volume_dims[1]):
+                for x in range(self.volume_dims[0]):
+                    voxel_pos = torch.tensor([
+                        self.volume_bounds[0][0] + x * self.voxel_size,
+                        self.volume_bounds[1][0] + y * self.voxel_size,
+                        self.volume_bounds[2][0] + z * self.voxel_size
+                    ], device=device)
+                    
+                    voxel_pos_h = torch.cat([voxel_pos, torch.ones(1, device=device)])
+                    voxel_cam = (torch.inverse(pose) @ voxel_pos_h)[:3]
+                    
+                    voxel_proj = intrinsics @ voxel_cam
+                    u = int(voxel_proj[0] / (voxel_proj[2] + 1e-8))
+                    v = int(voxel_proj[1] / (voxel_proj[2] + 1e-8))
+                    
+                    if 0 <= u < W and 0 <= v < H:
+                        surface_depth = depth_map[v, u]
+                        sdf = surface_depth - voxel_cam[2]
+                        
+                        if sdf > -self.truncation_distance:
+                            tsdf = min(1.0, sdf / self.truncation_distance)
+                            
+                            weight = 1.0
+                            old_weight = self.weight_volume[x, y, z]
+                            new_weight = old_weight + weight
+                            
+                            self.tsdf_volume[x, y, z] = (
+                                self.tsdf_volume[x, y, z] * old_weight + tsdf * weight
+                            ) / new_weight
+                            self.weight_volume[x, y, z] = new_weight
+                            
+                            if color_map is not None:
+                                color = color_map[v, u]
+                                self.color_volume[x, y, z] = (
+                                    self.color_volume[x, y, z] * old_weight + color * weight
+                                ) / new_weight
+    
+    def extract_point_cloud(self) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Extract point cloud from TSDF volume using marching cubes"""
+        points, colors = self.marching_cubes()
+        return points, colors
+    
+    def marching_cubes(self) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Simple marching cubes implementation"""
+        points = []
+        colors = []
+        
+        for x in range(self.volume_dims[0] - 1):
+            for y in range(self.volume_dims[1] - 1):
+                for z in range(self.volume_dims[2] - 1):
+                    tsdf_values = [
+                        self.tsdf_volume[x, y, z],
+                        self.tsdf_volume[x+1, y, z],
+                        self.tsdf_volume[x, y+1, z],
+                        self.tsdf_volume[x+1, y+1, z],
+                        self.tsdf_volume[x, y, z+1],
+                        self.tsdf_volume[x+1, y, z+1],
+                        self.tsdf_volume[x, y+1, z+1],
+                        self.tsdf_volume[x+1, y+1, z+1]
+                    ]
+                    
+                    positive = sum(1 for v in tsdf_values if v > 0)
+                    if 0 < positive < 8:
+                        pos = torch.tensor([
+                            self.volume_bounds[0][0] + (x + 0.5) * self.voxel_size,
+                            self.volume_bounds[1][0] + (y + 0.5) * self.voxel_size,
+                            self.volume_bounds[2][0] + (z + 0.5) * self.voxel_size
+                        ], device=self.tsdf_volume.device)
+                        
+                        points.append(pos)
+                        colors.append(self.color_volume[x, y, z])
+        
+        if points:
+            return torch.stack(points), torch.stack(colors)
+        else:
+            return torch.zeros((0, 3), device=self.tsdf_volume.device), torch.zeros((0, 3), device=self.tsdf_volume.device)
+
+
+class PointCloudFiltering:
+    """
+    Point cloud filtering and denoising
+    Implements statistical outlier removal, radius outlier removal, and voxel downsampling
+    """
+    
+    def __init__(self):
+        pass
+    
+    def statistical_outlier_removal(
+        self,
+        points: torch.Tensor,
+        k_neighbors: int = 50,
+        std_ratio: float = 1.0
+    ) -> torch.Tensor:
+        """Remove statistical outliers"""
+        if len(points) < k_neighbors:
+            return points
+        
+        distances = torch.cdist(points, points)
+        knn_distances, _ = torch.topk(distances, k_neighbors + 1, largest=False, dim=-1)
+        knn_distances = knn_distances[:, 1:]
+        
+        mean_distances = knn_distances.mean(dim=-1)
+        
+        global_mean = mean_distances.mean()
+        global_std = mean_distances.std()
+        
+        threshold = global_mean + std_ratio * global_std
+        inlier_mask = mean_distances < threshold
+        
+        return points[inlier_mask]
+    
+    def radius_outlier_removal(
+        self,
+        points: torch.Tensor,
+        radius: float = 0.05,
+        min_neighbors: int = 3
+    ) -> torch.Tensor:
+        """Remove points with insufficient neighbors within radius"""
+        distances = torch.cdist(points, points)
+        
+        neighbor_counts = (distances < radius).sum(dim=-1) - 1
+        
+        inlier_mask = neighbor_counts >= min_neighbors
+        
+        return points[inlier_mask]
+    
+    def voxel_downsample(
+        self,
+        points: torch.Tensor,
+        voxel_size: float = 0.01
+    ) -> torch.Tensor:
+        """Downsample point cloud using voxel grid"""
+        voxel_coords = torch.floor(points / voxel_size).long()
+        
+        unique_voxels, inverse_indices = torch.unique(voxel_coords, dim=0, return_inverse=True)
+        
+        downsampled = torch.zeros(len(unique_voxels), 3, device=points.device)
+        counts = torch.zeros(len(unique_voxels), device=points.device)
+        
+        downsampled.scatter_add_(0, inverse_indices.unsqueeze(-1).expand(-1, 3), points)
+        counts.scatter_add_(0, inverse_indices, torch.ones(len(points), device=points.device))
+        
+        downsampled = downsampled / counts.unsqueeze(-1)
+        
+        return downsampled
+
+
+class PointCloudTexturing:
+    """
+    Add color/texture information to point clouds
+    Projects images onto point cloud and assigns colors
+    """
+    
+    def __init__(self):
+        pass
+    
+    def texture_from_images(
+        self,
+        points: torch.Tensor,
+        images: List[torch.Tensor],
+        poses: List[torch.Tensor],
+        intrinsics: List[torch.Tensor],
+        blending_method: str = 'average'
+    ) -> torch.Tensor:
+        """Assign colors to points from multiple images"""
+        device = points.device
+        N = len(points)
+        colors = torch.zeros(N, 3, device=device)
+        weights = torch.zeros(N, device=device)
+        
+        for img, pose, K in zip(images, poses, intrinsics):
+            H, W = img.shape[:2]
+            
+            points_h = torch.cat([points, torch.ones(N, 1, device=device)], dim=-1)
+            points_cam = (torch.inverse(pose) @ points_h.T).T[:, :3]
+            
+            points_proj = (K @ points_cam.T).T
+            points_2d = points_proj[:, :2] / (points_proj[:, 2:3] + 1e-8)
+            
+            u = points_2d[:, 0].long()
+            v = points_2d[:, 1].long()
+            
+            visible = (
+                (points_cam[:, 2] > 0) &
+                (u >= 0) & (u < W) &
+                (v >= 0) & (v < H)
+            )
+            
+            for i in range(N):
+                if visible[i]:
+                    color = img[v[i], u[i]]
+                    
+                    if blending_method == 'average':
+                        colors[i] += color
+                        weights[i] += 1.0
+                    elif blending_method == 'closest':
+                        dist = points_cam[i, 2]
+                        if weights[i] == 0 or dist < weights[i]:
+                            colors[i] = color
+                            weights[i] = dist
+                    elif blending_method == 'weighted':
+                        weight = 1.0 / (points_cam[i, 2] + 1e-6)
+                        colors[i] += color * weight
+                        weights[i] += weight
+        
+        if blending_method in ['average', 'weighted']:
+            valid = weights > 0
+            colors[valid] = colors[valid] / weights[valid].unsqueeze(-1)
+        
+        return colors
+
+# =============================================================================
+# Mesh Generation
+# =============================================================================
+
+class PoissonReconstruction:
+    """
+    Poisson surface reconstruction
+    Reconstructs watertight mesh from oriented point cloud
+    Reference: Kazhdan et al., "Poisson Surface Reconstruction"
+    """
+    
+    def __init__(self, depth: int = 8, scale: float = 1.1):
+        self.depth = depth
+        self.scale = scale
+        
+    def reconstruct(
+        self,
+        points: torch.Tensor,
+        normals: torch.Tensor
+    ) -> Dict[str, torch.Tensor]:
+        """Reconstruct mesh from oriented point cloud"""
+        grid_res = 2 ** self.depth
+        bbox_min = points.min(dim=0)[0] - self.scale
+        bbox_max = points.max(dim=0)[0] + self.scale
+        
+        x = torch.linspace(bbox_min[0], bbox_max[0], grid_res)
+        y = torch.linspace(bbox_min[1], bbox_max[1], grid_res)
+        z = torch.linspace(bbox_min[2], bbox_max[2], grid_res)
+        
+        grid_x, grid_y, grid_z = torch.meshgrid(x, y, z, indexing='ij')
+        grid_points = torch.stack([grid_x.flatten(), grid_y.flatten(), grid_z.flatten()], dim=-1)
+        
+        implicit_values = self.evaluate_implicit(grid_points, points, normals)
+        implicit_volume = implicit_values.reshape(grid_res, grid_res, grid_res)
+        
+        vertices, faces = self.marching_cubes(implicit_volume, bbox_min, bbox_max)
+        
+        return {'vertices': vertices, 'faces': faces}
+    
+    def evaluate_implicit(
+        self,
+        grid_points: torch.Tensor,
+        points: torch.Tensor,
+        normals: torch.Tensor
+    ) -> torch.Tensor:
+        """Evaluate implicit function using screened Poisson formulation"""
+        values = torch.zeros(len(grid_points), device=points.device)
+        
+        for i in range(0, len(grid_points), 1000):
+            chunk = grid_points[i:i+1000]
+            distances = torch.cdist(chunk, points)
+            
+            weights = torch.exp(-distances.pow(2) / (0.01 ** 2))
+            
+            contributions = (weights * (normals.sum(dim=-1, keepdim=True).T)).sum(dim=-1)
+            values[i:i+1000] = contributions
+        
+        return values
+    
+    def marching_cubes(
+        self,
+        volume: torch.Tensor,
+        bbox_min: torch.Tensor,
+        bbox_max: torch.Tensor,
+        iso_value: float = 0.0
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Marching cubes algorithm for isosurface extraction"""
+        vertices = []
+        faces = []
+        
+        res_x, res_y, res_z = volume.shape
+        
+        dx = (bbox_max[0] - bbox_min[0]) / (res_x - 1)
+        dy = (bbox_max[1] - bbox_min[1]) / (res_y - 1)
+        dz = (bbox_max[2] - bbox_min[2]) / (res_z - 1)
+        
+        vertex_index = {}
+        
+        for x in range(res_x - 1):
+            for y in range(res_y - 1):
+                for z in range(res_z - 1):
+                    cube_values = [
+                        volume[x, y, z],
+                        volume[x+1, y, z],
+                        volume[x+1, y+1, z],
+                        volume[x, y+1, z],
+                        volume[x, y, z+1],
+                        volume[x+1, y, z+1],
+                        volume[x+1, y+1, z+1],
+                        volume[x, y+1, z+1]
+                    ]
+                    
+                    cube_index = 0
+                    for i, val in enumerate(cube_values):
+                        if val < iso_value:
+                            cube_index |= (1 << i)
+                    
+                    if cube_index == 0 or cube_index == 255:
+                        continue
+                    
+                    cx = bbox_min[0] + (x + 0.5) * dx
+                    cy = bbox_min[1] + (y + 0.5) * dy
+                    cz = bbox_min[2] + (z + 0.5) * dz
+                    
+                    idx = len(vertices)
+                    vertices.append([cx, cy, cz])
+                    vertex_index[(x, y, z)] = idx
+        
+        vertices_tensor = torch.tensor(vertices, dtype=torch.float32) if vertices else torch.zeros((0, 3))
+        faces_tensor = torch.tensor(faces, dtype=torch.long) if faces else torch.zeros((0, 3), dtype=torch.long)
+        
+        return vertices_tensor, faces_tensor
+
+
+class MarchingCubes:
+    """
+    Marching Cubes algorithm for isosurface extraction
+    Extracts mesh from implicit function represented on a grid
+    """
+    
+    def __init__(self, iso_value: float = 0.0):
+        self.iso_value = iso_value
+        
+        self.edge_table = self._build_edge_table()
+        self.tri_table = self._build_tri_table()
+    
+    def _build_edge_table(self) -> List[int]:
+        """Build edge table for marching cubes"""
+        return [
+            0x0, 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
+            0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
+            0x190, 0x99, 0x393, 0x29a, 0x596, 0x49f, 0x795, 0x69c,
+            0x99c, 0x895, 0xb9f, 0xa96, 0xd9a, 0xc93, 0xf99, 0xe90
+        ]
+    
+    def _build_tri_table(self) -> List[List[int]]:
+        """Build triangle table for marching cubes"""
+        return [[-1] * 16 for _ in range(256)]
+    
+    def extract_surface(
+        self,
+        volume: torch.Tensor,
+        origin: torch.Tensor,
+        spacing: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Extract isosurface from volume"""
+        vertices = []
+        faces = []
+        
+        res_x, res_y, res_z = volume.shape
+        
+        for x in range(res_x - 1):
+            for y in range(res_y - 1):
+                for z in range(res_z - 1):
+                    cube_values = [
+                        volume[x, y, z].item(),
+                        volume[x+1, y, z].item(),
+                        volume[x+1, y+1, z].item(),
+                        volume[x, y+1, z].item(),
+                        volume[x, y, z+1].item(),
+                        volume[x+1, y, z+1].item(),
+                        volume[x+1, y+1, z+1].item(),
+                        volume[x, y+1, z+1].item()
+                    ]
+                    
+                    cube_index = 0
+                    for i, val in enumerate(cube_values):
+                        if val < self.iso_value:
+                            cube_index |= (1 << i)
+                    
+                    if cube_index == 0 or cube_index == 255:
+                        continue
+                    
+                    vx = origin[0] + x * spacing[0]
+                    vy = origin[1] + y * spacing[1]
+                    vz = origin[2] + z * spacing[2]
+                    
+                    idx = len(vertices)
+                    vertices.append([vx + 0.5 * spacing[0], vy + 0.5 * spacing[1], vz + 0.5 * spacing[2]])
+        
+        vertices_tensor = torch.tensor(vertices, dtype=torch.float32) if vertices else torch.zeros((0, 3))
+        faces_tensor = torch.tensor(faces, dtype=torch.long) if faces else torch.zeros((0, 3), dtype=torch.long)
+        
+        return vertices_tensor, faces_tensor
+
+
+class DelaunayTriangulation:
+    """
+    3D Delaunay triangulation
+    Creates tetrahedral mesh from point cloud
+    """
+    
+    def __init__(self):
+        pass
+    
+    def triangulate(self, points: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Compute Delaunay triangulation of points
+        Returns vertices and tetrahedra indices
+        """
+        try:
+            from scipy.spatial import Delaunay as SciPyDelaunay
+            
+            points_np = points.cpu().numpy()
+            delaunay = SciPyDelaunay(points_np)
+            
+            vertices = torch.from_numpy(delaunay.points).float()
+            tetrahedra = torch.from_numpy(delaunay.simplices).long()
+            
+            return vertices, tetrahedra
+        except ImportError:
+            raise ImportError("scipy is required for Delaunay triangulation")
+    
+    def extract_surface(
+        self,
+        points: torch.Tensor,
+        tetrahedra: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Extract surface mesh from tetrahedral mesh"""
+        faces_set = set()
+        
+        for tet in tetrahedra:
+            faces = [
+                tuple(sorted([tet[0].item(), tet[1].item(), tet[2].item()])),
+                tuple(sorted([tet[0].item(), tet[1].item(), tet[3].item()])),
+                tuple(sorted([tet[0].item(), tet[2].item(), tet[3].item()])),
+                tuple(sorted([tet[1].item(), tet[2].item(), tet[3].item()]))
+            ]
+            
+            for face in faces:
+                if face in faces_set:
+                    faces_set.remove(face)
+                else:
+                    faces_set.add(face)
+        
+        faces_list = [list(face) for face in faces_set]
+        faces_tensor = torch.tensor(faces_list, dtype=torch.long) if faces_list else torch.zeros((0, 3), dtype=torch.long)
+        
+        return points, faces_tensor
+
+# =============================================================================
+# Evaluation Metrics
+# =============================================================================
+
+class ChamferDistance:
+    """
+    Chamfer distance between two point clouds
+    Measures the average distance between nearest neighbor pairs
+    """
+    
+    def __init__(self, bidirectional: bool = True):
+        self.bidirectional = bidirectional
+        
+    def compute(
+        self,
+        points1: torch.Tensor,
+        points2: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Compute Chamfer distance
+        
+        Args:
+            points1: First point cloud [N, 3]
+            points2: Second point cloud [M, 3]
+            
+        Returns:
+            Chamfer distance (scalar)
+        """
+        # Forward direction: points1 -> points2
+        dists_1_to_2 = torch.cdist(points1, points2)
+        min_dists_1_to_2 = dists_1_to_2.min(dim=1)[0]
+        
+        if self.bidirectional:
+            # Backward direction: points2 -> points1
+            dists_2_to_1 = torch.cdist(points2, points1)
+            min_dists_2_to_1 = dists_2_to_1.min(dim=1)[0]
+            
+            # Average both directions
+            chamfer = (min_dists_1_to_2.mean() + min_dists_2_to_1.mean()) / 2.0
+        else:
+            chamfer = min_dists_1_to_2.mean()
+        
+        return chamfer
+
+
+class HausdorffDistance:
+    """
+    Hausdorff distance between two point clouds
+    Measures the maximum distance between nearest neighbor pairs
+    """
+    
+    def __init__(self, directed: bool = False):
+        self.directed = directed
+        
+    def compute(
+        self,
+        points1: torch.Tensor,
+        points2: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Compute Hausdorff distance
+        
+        Args:
+            points1: First point cloud [N, 3]
+            points2: Second point cloud [M, 3]
+            
+        Returns:
+            Hausdorff distance (scalar)
+        """
+        # Compute pairwise distances
+        dists_1_to_2 = torch.cdist(points1, points2)
+        
+        # Minimum distances from points1 to points2
+        min_dists_1_to_2 = dists_1_to_2.min(dim=1)[0]
+        hausdorff_1_to_2 = min_dists_1_to_2.max()
+        
+        if self.directed:
+            return hausdorff_1_to_2
+        
+        # Symmetric Hausdorff distance
+        dists_2_to_1 = torch.cdist(points2, points1)
+        min_dists_2_to_1 = dists_2_to_1.min(dim=1)[0]
+        hausdorff_2_to_1 = min_dists_2_to_1.max()
+        
+        return torch.max(hausdorff_1_to_2, hausdorff_2_to_1)
+
+
+class NormalConsistency:
+    """
+    Normal consistency metric for mesh evaluation
+    Measures the consistency of surface normals between two meshes
+    """
+    
+    def __init__(self):
+        pass
+    
+    def compute(
+        self,
+        points1: torch.Tensor,
+        normals1: torch.Tensor,
+        points2: torch.Tensor,
+        normals2: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Compute normal consistency between two meshes
+        
+        Args:
+            points1: First mesh vertices [N, 3]
+            normals1: First mesh normals [N, 3]
+            points2: Second mesh vertices [M, 3]
+            normals2: Second mesh normals [M, 3]
+            
+        Returns:
+            Normal consistency score (scalar in [0, 1])
+        """
+        # Normalize normals
+        normals1 = F.normalize(normals1, dim=-1)
+        normals2 = F.normalize(normals2, dim=-1)
+        
+        # Find nearest neighbors
+        dists = torch.cdist(points1, points2)
+        nearest_indices = dists.argmin(dim=1)
+        
+        # Compute dot product between corresponding normals
+        nearest_normals2 = normals2[nearest_indices]
+        dot_products = (normals1 * nearest_normals2).sum(dim=-1)
+        
+        # Normal consistency is the average absolute dot product
+        consistency = torch.abs(dot_products).mean()
+        
+        return consistency
+    
+    def compute_from_faces(
+        self,
+        vertices1: torch.Tensor,
+        faces1: torch.Tensor,
+        vertices2: torch.Tensor,
+        faces2: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Compute normal consistency from mesh faces
+        
+        Args:
+            vertices1: First mesh vertices [N, 3]
+            faces1: First mesh faces [F1, 3]
+            vertices2: Second mesh vertices [M, 3]
+            faces2: Second mesh faces [F2, 3]
+            
+        Returns:
+            Normal consistency score
+        """
+        # Compute face normals and centroids
+        normals1, centroids1 = self._compute_face_normals(vertices1, faces1)
+        normals2, centroids2 = self._compute_face_normals(vertices2, faces2)
+        
+        # Use face centroids and normals for consistency
+        return self.compute(centroids1, normals1, centroids2, normals2)
+    
+    def _compute_face_normals(
+        self,
+        vertices: torch.Tensor,
+        faces: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Compute face normals and centroids"""
+        v0 = vertices[faces[:, 0]]
+        v1 = vertices[faces[:, 1]]
+        v2 = vertices[faces[:, 2]]
+        
+        # Face centroids
+        centroids = (v0 + v1 + v2) / 3.0
+        
+        # Face normals
+        e1 = v1 - v0
+        e2 = v2 - v0
+        normals = torch.cross(e1, e2, dim=-1)
+        normals = F.normalize(normals, dim=-1)
+        
+        return normals, centroids
+
+
+# =============================================================================
+# Module Exports
+# =============================================================================
+
+__all__ = [
+    # Multi-View Stereo
+    'MVSNet',
+    'PatchmatchNet',
+    'CasMVSNet',
+    'UCSNet',
+    'CostVolumeRegularization',
+    'RefineNetwork',
+    
+    # Structure from Motion
+    'COLMAPWrapper',
+    'BundleAdjustment',
+    'SparseReconstruction',
+    'DenseReconstruction',
+    
+    # Neural Radiance Fields
+    'NeRF',
+    'InstantNGP',
+    'PlenOctrees',
+    'NeuS',
+    
+    # Depth Estimation
+    'MonocularDepth',
+    'StereoDepth',
+    'MultiViewDepth',
+    
+    # Point Cloud Processing
+    'PointCloudRegistration',
+    'PointCloudFusion',
+    'PointCloudFiltering',
+    'PointCloudTexturing',
+    
+    # Mesh Generation
+    'PoissonReconstruction',
+    'MarchingCubes',
+    'DelaunayTriangulation',
+    
+    # Evaluation
+    'ChamferDistance',
+    'HausdorffDistance',
+    'NormalConsistency',
+]
