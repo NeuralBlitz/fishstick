@@ -7,9 +7,11 @@ from .symbolic import (
     TruthValue,
 )
 from .induction import (
-    ProgramInducer,
-    NeuralProgramSynthesizer,
-    NPI,
+    NeuralProgramInducer,
+    ProgramInduction,
+    ProgramSynthesizer,
+    ProgramOp,
+    Program,
     ProgramEmbedding,
 )
 
@@ -22,8 +24,10 @@ __all__ = [
     "LNN",
     "Formula",
     "TruthValue",
-    "ProgramInducer",
-    "NeuralProgramSynthesizer",
-    "NPI",
+    "NeuralProgramInducer",
+    "ProgramInduction",
+    "ProgramSynthesizer",
+    "ProgramOp",
+    "Program",
     "ProgramEmbedding",
 ]

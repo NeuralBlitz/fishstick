@@ -255,8 +255,25 @@ def create_selector(
     from .fisher_score import FisherScoreSelector
     from .recursive_feature_elimination import RecursiveFeatureElimination
     from .sequential_feature_selection import SequentialFeatureSelector
-    from .lasso_selection import LassoSelector
-    from .tree_based_selection import TreeBasedSelector
+    from .anova_ftest import ANOVAFTestSelector, FRegressionSelector
+    from .relieff import ReliefFSelector
+    from .laplacian_score import LaplacianScoreSelector
+    from .genetic_algorithm import GeneticAlgorithmSelector
+    from .greedy_stepwise import GreedyStepwiseSelector
+    from .lasso_selection import LassoSelector, LassoCVSelector, LassoStabilitySelector
+    from .elastic_net_tree import (
+        ElasticNetSelector,
+        RandomForestImportanceSelector,
+        GBDTImportanceSelector,
+        PermutationImportanceSelector,
+    )
+    from .dimensionality_reduction import (
+        PCASelector,
+        LDASelector,
+        ICASelector,
+        KernelPCASelector,
+    )
+    from .shap_importance import SHAPImportanceSelector
 
     selectors = {
         "variance": VarianceThresholdSelector,
@@ -267,8 +284,30 @@ def create_selector(
         "rfe": RecursiveFeatureElimination,
         "sequential": SequentialFeatureSelector,
         "lasso": LassoSelector,
-        "tree": TreeBasedSelector,
+        "lasso_cv": LassoCVSelector,
+        "lasso_stability": LassoStabilitySelector,
+        "elastic_net": ElasticNetSelector,
+        "anova_f": ANOVAFTestSelector,
+        "f_regression": FRegressionSelector,
+        "relieff": ReliefFSelector,
+        "laplacian": LaplacianScoreSelector,
+        "genetic": GeneticAlgorithmSelector,
+        "greedy_forward": GreedyStepwiseSelector,
+        "greedy_backward": GreedyStepwiseSelector,
+        "rf_importance": RandomForestImportanceSelector,
+        "gbdt_importance": GBDTImportanceSelector,
+        "permutation": PermutationImportanceSelector,
+        "pca": PCASelector,
+        "lda": LDASelector,
+        "ica": ICASelector,
+        "kernel_pca": KernelPCASelector,
+        "shap": SHAPImportanceSelector,
     }
+
+    if method == "greedy_forward":
+        kwargs["direction"] = "forward"
+    elif method == "greedy_backward":
+        kwargs["direction"] = "backward"
 
     if method not in selectors:
         raise ValueError(

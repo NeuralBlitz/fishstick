@@ -96,6 +96,54 @@ from fishstick.scene_understanding.scene_graph import (
     create_scene_graph_model,
 )
 
+from fishstick.scene_understanding.scene_layout import (
+    LayoutPrediction,
+    LayoutEncoder,
+    LayoutDecoder,
+    PerspectiveFieldEstimator,
+    LayoutRefinementModule,
+    RoomLayoutEstimator,
+    create_layout_estimator,
+)
+
+from fishstick.scene_understanding.scene_flow import (
+    CostVolumeBuilder,
+    FlowDecoder,
+    OcclusionEstimator,
+    RigidFlowDecomposition,
+    SceneFlowEncoder,
+    SceneFlowEstimator,
+    create_scene_flow_model,
+)
+
+from fishstick.scene_understanding.material_recognition import (
+    MATERIAL_CLASSES,
+    TextureDescriptor,
+    MaterialEncoder,
+    ReflectanceEstimator,
+    MaterialSegmentationHead,
+    MaterialClassifier,
+    create_material_model,
+)
+
+from fishstick.scene_understanding.scene_completion import (
+    PartialConv2d,
+    GatedConv2d,
+    ContextualAttention,
+    SemanticGuidedCompletion,
+    SceneCompletionNetwork,
+    create_completion_model,
+)
+
+from fishstick.scene_understanding.scene_dynamics import (
+    SpatioTemporalEncoder,
+    MotionFieldPredictor,
+    SceneEvolutionGRU,
+    PhysicsAwarePrediction,
+    SceneDynamicsPredictor,
+    create_dynamics_model,
+)
+
 __all__ = [
     "compute_psnr",
     "compute_ssim",
@@ -156,4 +204,37 @@ __all__ = [
     "SceneGraphReasoning",
     "RELATIONSHIP_CLASSES",
     "create_scene_graph_model",
+    "LayoutPrediction",
+    "LayoutEncoder",
+    "LayoutDecoder",
+    "PerspectiveFieldEstimator",
+    "LayoutRefinementModule",
+    "RoomLayoutEstimator",
+    "create_layout_estimator",
+    "CostVolumeBuilder",
+    "FlowDecoder",
+    "OcclusionEstimator",
+    "RigidFlowDecomposition",
+    "SceneFlowEncoder",
+    "SceneFlowEstimator",
+    "create_scene_flow_model",
+    "MATERIAL_CLASSES",
+    "TextureDescriptor",
+    "MaterialEncoder",
+    "ReflectanceEstimator",
+    "MaterialSegmentationHead",
+    "MaterialClassifier",
+    "create_material_model",
+    "PartialConv2d",
+    "GatedConv2d",
+    "ContextualAttention",
+    "SemanticGuidedCompletion",
+    "SceneCompletionNetwork",
+    "create_completion_model",
+    "SpatioTemporalEncoder",
+    "MotionFieldPredictor",
+    "SceneEvolutionGRU",
+    "PhysicsAwarePrediction",
+    "SceneDynamicsPredictor",
+    "create_dynamics_model",
 ]
