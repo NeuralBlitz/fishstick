@@ -4,4 +4,36 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
-packages = ["go", "libxcrypt", "libyaml", "pkg-config", "xsimd"]
+packages = ["go", "libxcrypt", "libyaml", "pkg-config", "xsimd", "cargo", "hickory-dns", "inetutils", "sptk", "python313Packages.httpie", "gh", "solana-cli", "php", "pkg", "apk-tools", "nim-unwrapped", "vlang", "spidermonkey_128", "build2", "emacsclient-commands", "g-ls", "h", "python313Packages.open-interpreter", "ngn-k", "orbiton", "q-text-as-data", "timetrap", "yakut", "z-lua", "ruby_3_4", "python313Packages.llm", "zsh", "lua52Packages.lua", "webdav", "haskellPackages.wd", "nom", "pop", "mujoco", "got"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 6065
+externalPort = 80
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Frontend Server"
+
+[[workflows.workflow]]
+name = "Frontend Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm start -- --host 0.0.0.0 --port 5000 --disable-host-check"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"

@@ -110,13 +110,7 @@ class SpectralConv1D(nn.Module):
         self.modes = modes
         self.factor = factor
 
-        self.fourier_weights = nn.Parameter(
-            torch.randn(in_channels, out_channels, modes, 2) * 0.02
-        )
-
-        self.complex_weights = nn.Parameter(
-            torch.complex(self.fourier_weights[..., 0], self.fourier_weights[..., 1])
-        )
+        self.weight = nn.Parameter(torch.randn(in_channels, out_channels) * 0.02)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Apply spectral convolution.
@@ -135,9 +129,18 @@ class SpectralConv1D(nn.Module):
         modes_selected = min(self.modes, x_ft.shape[-1])
         x_ft_truncated = x_ft[:, :, :modes_selected]
 
-        weights = self.complex_weights[:, :, :modes_selected]
+        w = self.weight[:, :].to(device).to(x_ft_truncated.dtype)
 
-        out_ft = torch.einsum("bcm,co->bom", x_ft_truncated, weights)
+        x_ft_transformed = torch.matmul(x_ft_truncated.permute(0, 2, 1), w).permute(
+            0, 2, 1
+        )
+
+        out = torch.zeros(
+            batch_size, self.out_channels, length, dtype=torch.complex64, device=device
+        )
+        out[:, :, :modes_selected] = x_ft_transformed
+
+        return torch.fft.irfft(out, dim=-1, n=length)
 
         out = torch.zeros(
             batch_size, self.out_channels, length, dtype=torch.complex64, device=device
@@ -372,8 +375,10 @@ class FNO1D(nn.Module):
 
         for i in range(self.n_layers):
             residual = x
+            x = x.transpose(1, 2)
             x = self.spectral_layers[i](x)
-            x = self.norms(x)
+            x = x.transpose(1, 2)
+            x = self.norms[i](x)
             x = self.activation(x)
             x = x + residual
 

@@ -164,11 +164,6 @@ class MarkovGame(MultiAgentEnvironment):
         transition_probs: Transition probabilities
     """
 
-    states: Set[int]
-    n_agents: int
-    payoff_tensors: Dict[int, NDArray[np.float64]]
-    transition_probs: Dict[int, Dict[Tuple[int, ...], Dict[int, float]]]
-
     def __init__(
         self,
         states: Set[int],
@@ -183,6 +178,13 @@ class MarkovGame(MultiAgentEnvironment):
         self.transition_probs = transition_probs
         self.current_state = initial_state
         self._step_count = 0
+
+    states: Set[int] = field(init=False)
+    n_agents: int = field(init=False)
+    payoff_tensors: Dict[int, NDArray[np.float64]] = field(init=False)
+    transition_probs: Dict[int, Dict[Tuple[int, ...], Dict[int, float]]] = field(
+        init=False
+    )
 
     def reset(self) -> MultiAgentState:
         """Reset the game."""

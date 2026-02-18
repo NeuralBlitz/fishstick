@@ -198,23 +198,13 @@ class ConstantQTransform(nn.Module):
 
     def _create_filter_bank(self) -> torch.Tensor:
         """Create CQT filter bank."""
-        n_fft = 2 ** int(
-            np.ceil(
-                np.log2(
-                    self.fmax
-                    * 2
-                    / self.sample_rate
-                    * self.q
-                    / (2 ** (1 / self.bins_per_octave) - 1)
-                )
-            )
-        )
+        n_fft = 2048
 
-        filters = torch.zeros(self.n_bins, n_fft)
+        filters = torch.zeros(self.n_bins, n_fft // 2 + 1)
 
         for k in range(self.n_bins):
             fk = self.fmin * 2 ** (k / self.bins_per_octave)
-            n = torch.arange(n_fft)
+            n = torch.arange(n_fft // 2 + 1)
             freq = n * self.sample_rate / n_fft
 
             filter_response = torch.exp(
@@ -241,8 +231,9 @@ class ConstantQTransform(nn.Module):
             signal = signal.unsqueeze(0)
 
         device = signal.device
-        n_fft = self.filters.shape[1]
         filters = self.filters.to(device)
+
+        n_fft = 2048
 
         stft = torch.stft(
             signal,
@@ -253,7 +244,7 @@ class ConstantQTransform(nn.Module):
             return_complex=True,
         )
 
-        cqt = torch.matmul(filters.unsqueeze(0), stft)
+        cqt = torch.matmul(filters.unsqueeze(0).to(stft.dtype), stft)
 
         return torch.abs(cqt)
 

@@ -419,7 +419,7 @@ class CurvatureBasedEmbedding(ManifoldLearnerBase):
         distances, _ = nn_finder.kneighbors(X_np)
         distances = distances[:, 1:]
 
-        curvatures = distances.var(dim=1)
+        curvatures = distances.var(axis=1)
 
         return torch.from_numpy(curvatures).float().to(device)
 

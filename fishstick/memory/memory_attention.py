@@ -124,7 +124,7 @@ class SparseMemoryAttention(nn.Module):
     """
     Sparse attention for large memory systems.
 
-    Uses local attention windows with optional global memory tokens.
+    Uses local attention windows.
     Computationally efficient for large memory sizes.
     """
 
@@ -134,24 +134,18 @@ class SparseMemoryAttention(nn.Module):
         num_heads: int = 8,
         memory_size: int = 1024,
         window_size: int = 64,
-        num_global: int = 8,
     ):
         super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.memory_size = memory_size
         self.window_size = window_size
-        self.num_global = num_global
 
         self.head_dim = embed_dim // num_heads
-
-        self.memory = nn.Parameter(torch.randn(memory_size, embed_dim) * 0.01)
 
         self.q_proj = nn.Linear(embed_dim, embed_dim)
         self.k_proj = nn.Linear(embed_dim, embed_dim)
         self.v_proj = nn.Linear(embed_dim, embed_dim)
-
-        self.global_q = nn.Linear(embed_dim, num_global * self.head_dim)
 
         self.out_proj = nn.Linear(embed_dim, embed_dim)
 
@@ -162,7 +156,7 @@ class SparseMemoryAttention(nn.Module):
         x: Tensor,
     ) -> Tuple[Tensor, Dict[str, Tensor]]:
         """
-        Sparse attention with local windows and global tokens.
+        Sparse attention with local windows.
 
         Args:
             x: Input tensor [batch, seq_len, embed_dim]
@@ -199,53 +193,7 @@ class SparseMemoryAttention(nn.Module):
 
         local_output = torch.matmul(attn_weights, v)
 
-        if self.num_global > 0:
-            global_q = self.global_q(x)
-            global_q = global_q.view(
-                batch_size, seq_len, self.num_global, self.head_dim
-            )
-            global_q = global_q.transpose(1, 2)
-
-            global_k = self.memory[: self.num_global].unsqueeze(0).unsqueeze(0)
-            global_k = global_k.expand(batch_size, seq_len, -1, -1)
-            global_k = global_k.view(
-                batch_size * seq_len, self.num_global, self.head_dim
-            )
-
-            global_energy = (
-                torch.matmul(
-                    global_q.view(-1, self.num_global, self.head_dim),
-                    global_k.transpose(-2, -1),
-                )
-                * self.scale
-            )
-            global_energy = global_energy.view(
-                batch_size, seq_len, self.num_global, self.num_global
-            )
-
-            global_attn = F.softmax(global_energy, dim=-1)
-
-            global_v = (
-                self.memory[: self.num_global]
-                .unsqueeze(0)
-                .expand(batch_size, seq_len, -1, -1)
-            )
-            global_v = global_v.view(
-                batch_size * seq_len, self.num_global, self.head_dim
-            )
-            global_output = torch.matmul(
-                global_attn.view(-1, self.num_global, self.head_dim), global_v
-            )
-            global_output = global_output.view(batch_size, seq_len, -1)
-
-            output = (
-                local_output.transpose(1, 2).contiguous().view(batch_size, seq_len, -1)
-            )
-            output = output + global_output
-        else:
-            output = (
-                local_output.transpose(1, 2).contiguous().view(batch_size, seq_len, -1)
-            )
+        output = local_output.transpose(1, 2).contiguous().view(batch_size, seq_len, -1)
 
         output = self.out_proj(output)
 

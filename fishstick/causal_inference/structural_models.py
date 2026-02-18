@@ -126,7 +126,9 @@ class LinearSCM(BaseSCM):
             else:
                 parents = torch.where(self.adjacency_matrix[:, var_idx] > 0)[0]
                 if len(parents) > 0:
-                    parent_values = torch.stack([samples[p] for p in parents], dim=-1)
+                    parent_values = torch.stack(
+                        [samples[int(p)] for p in parents], dim=-1
+                    )
                     parent_weights = self.adjacency_matrix[parents, var_idx]
                     linear_term = parent_values @ parent_weights
                 else:
@@ -162,9 +164,10 @@ class LinearSCM(BaseSCM):
             node = queue.pop(0)
             order.append(node)
             for child in torch.where(self.adjacency_matrix[node] > 0)[0]:
-                in_degree[child] -= 1
-                if in_degree[child] == 0:
-                    queue.append(child)
+                child_int = int(child)
+                in_degree[child_int] -= 1
+                if in_degree[child_int] == 0:
+                    queue.append(child_int)
 
         return order
 
@@ -311,9 +314,10 @@ class AdditiveSCM(BaseSCM):
             node = queue.pop(0)
             order.append(node)
             for child in torch.where(self.adjacency_matrix[node] > 0)[0]:
-                in_degree[child] -= 1
-                if in_degree[child] == 0:
-                    queue.append(child)
+                child_int = int(child)
+                in_degree[child_int] -= 1
+                if in_degree[child_int] == 0:
+                    queue.append(child_int)
 
         return order
 
@@ -459,9 +463,10 @@ class NonlinearSCM(BaseSCM):
             node = queue.pop(0)
             order.append(node)
             for child in torch.where(self.adjacency_matrix[node] > 0)[0]:
-                in_degree[child] -= 1
-                if in_degree[child] == 0:
-                    queue.append(child)
+                child_int = int(child)
+                in_degree[child_int] -= 1
+                if in_degree[child_int] == 0:
+                    queue.append(child_int)
 
         return order
 
@@ -619,9 +624,10 @@ class GaussianProcessSCM(BaseSCM):
             node = queue.pop(0)
             order.append(node)
             for child in torch.where(self.adjacency_matrix[node] > 0)[0]:
-                in_degree[child] -= 1
-                if in_degree[child] == 0:
-                    queue.append(child)
+                child_int = int(child)
+                in_degree[child_int] -= 1
+                if in_degree[child_int] == 0:
+                    queue.append(child_int)
 
         return order
 

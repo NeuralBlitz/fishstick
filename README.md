@@ -1,12 +1,39 @@
-<img width="480" height="480" alt="image" src="https://github.com/user-attachments/assets/2369e054-b7bf-4ce9-acc2-8b2f3da78416" />
+![image](image.png)
+>*A mathematically rigorous, physically grounded AI framework synthesizing theoretical physics, formal mathematics, and advanced machine learning.*
 
-
-
-A mathematically rigorous, physically grounded AI framework synthesizing theoretical physics, formal mathematics, and advanced machine learning.
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+
+ # FishStick..🐠🪾
+
+**Fishing that sticks!** 🎣  
+
+Na dat dere waa bwokee, its kay,i 
+*Phhhisshtikk*
+
+> - *Do Your Training Pipelines need Fixed?*
+> - *Other Platforms Learning Curves to steep?*
+> - *Tech/Dev, CLI Knowledge required for Advanced AI/Ml modeling?*
+> - *Learning to Train got you or your business on hold?*
+> - *Dont know how to fix it??*
+
+***DONT WORRY or FRET***
+
+`first just run`
+'npm pip install 1000 deps'
+`pipnpe i -curls! fish @goland`
+ run dev init
+ |•••••••••••••••••••••••••••••••|
+
+# ***IM ONLY KIDDING***
+
+
+# FishStick.. 🐠🪾🚀
+  "Is a Comprehensive and Robust
+ AI/ML Training Ecosystem"
 
 ## Overview
 

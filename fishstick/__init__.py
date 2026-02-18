@@ -797,6 +797,37 @@ __all__ = [
     "compute_gaussian_epsilon",
     "estimate_epsilon",
     "PrivacyBudget",
+    # Memory
+    "DifferentiableStack",
+    "DifferentiableQueue",
+    "DifferentiableDeque",
+    "PriorityQueue",
+    "DifferentiableStackEnsemble",
+    "NeuralTuringMachine",
+    "LookupFreeNTM",
+    "create_ntm",
+    "HopfieldAttention",
+    "SparseMemoryAttention",
+    "KeyValueMemoryAttention",
+    "AssociativeAttention",
+    "MemoryAugmentedAttention",
+    "RoutingAttention",
+    "SetAttention",
+    "CosineSimilarityAddressing",
+    "EuclideanDistanceAddressing",
+    "DotProductAddressing",
+    "LearnedSimilarityAddressing",
+    "MultiHeadContentAddressing",
+    "HybridAddressing",
+    "AttentionBasedAddressing",
+    "MemoryBank",
+    "AssociativeMemory",
+    "WorkingMemory",
+    "EpisodicMemory",
+    "SemanticMemory",
+    "HierarchicalMemorySystem",
+    "ContinualLearningMemory",
+    "MetaLearningMemory",
 ]
 
 try:
@@ -861,3 +892,39 @@ try:
     _PRIVACY_AVAILABLE = True
 except ImportError:
     _PRIVACY_AVAILABLE = False
+
+try:
+    from .logic import (
+        PropositionalLogic,
+        DPLLSolver,
+        SATProblem,
+        Atom,
+        Constant,
+        Formula as PropFormula,
+        UnifierFOL,
+        Skolemizer,
+        FOLToCNF,
+        ModalSystem,
+        KripkeFrame,
+        KripkeModel,
+        ModalFormula,
+        ModalLogic,
+        ModalTableauProver,
+        Concept,
+        Role,
+        TBox,
+        ABox,
+        StructuralReasoner,
+        TableauAlgorithm,
+        CDCLSolver,
+        ResolutionProver,
+        FirstOrderClause,
+        Literal,
+        Clause,
+        NaturalDeductionProver,
+    )
+
+    _LOGIC_AVAILABLE = True
+except ImportError as e:
+    print(f"Logic module import error: {e}")
+    _LOGIC_AVAILABLE = False

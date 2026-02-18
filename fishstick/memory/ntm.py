@@ -575,7 +575,9 @@ class LookupFreeNTM(nn.Module):
         memory_expanded = self.memory.unsqueeze(0).expand(batch_size, -1, -1)
 
         similarity = torch.sum(memory_expanded * key_expanded, dim=-1)
-        attention = F.softmax(strength * similarity, dim=-1)
+
+        strength_expanded = strength.unsqueeze(-1)
+        attention = F.softmax(strength_expanded * similarity, dim=-1)
 
         read_vector = torch.einsum("bm,bmi->bi", attention, memory_expanded)
 

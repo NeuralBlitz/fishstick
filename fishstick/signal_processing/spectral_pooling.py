@@ -187,15 +187,19 @@ class WaveletPooling(nn.Module):
         batch, channels, length = x.shape
         device = x.device
 
-        lo = self.dec_lo.to(device).unsqueeze(0).unsqueeze(0)
-        hi = self.dec_hi.to(device).unsqueeze(0).unsqueeze(0)
+        lo = self.dec_lo.to(device).unsqueeze(0).unsqueeze(0).repeat(channels, 1, 1)
+        hi = self.dec_hi.to(device).unsqueeze(0).unsqueeze(0).repeat(channels, 1, 1)
 
         approx = x
         details = []
 
         for _ in range(self.level):
-            low = F.conv1d(approx, lo, stride=2, padding=lo.shape[-1] // 2)
-            high = F.conv1d(approx, hi, stride=2, padding=hi.shape[-1] // 2)
+            low = F.conv1d(
+                approx, lo, groups=channels, stride=2, padding=lo.shape[-1] // 2
+            )
+            high = F.conv1d(
+                approx, hi, groups=channels, stride=2, padding=hi.shape[-1] // 2
+            )
             details.append(high)
             approx = low
 

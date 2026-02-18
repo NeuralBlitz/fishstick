@@ -172,7 +172,11 @@ class MorletWaveletBank(nn.Module):
                 padding=wavelet_len // 2,
             )
 
-            result[:, i, :] = conv_real.squeeze(1) + 1j * conv_imag.squeeze(1)
+            out_len = min(conv_real.shape[-1], length)
+            result[:, i, :out_len] = (
+                conv_real.squeeze(1)[:, :out_len]
+                + 1j * conv_imag.squeeze(1)[:, :out_len]
+            )
 
         return result
 

@@ -207,7 +207,7 @@ class MultiscaleDiffusionMap(DiffusionMap):
         for t_idx, t in enumerate(self.time_steps):
             normalized = self._normalize_kernel(kernel)
 
-            for _ in range(t - 1):
+            for _ in range(max(0, t - 1)):
                 normalized = normalized @ self._normalize_kernel(kernel)
 
             transition_np = normalized.cpu().numpy()
@@ -331,11 +331,15 @@ class KernelPCA:
 
         eigenvalues, eigenvectors = torch.linalg.eigh(K_centered)
 
+        eigenvalues = torch.clamp(eigenvalues, min=1e-10)
+
         idx = torch.argsort(eigenvalues)[::-1]
         eigenvalues = eigenvalues[idx][: self.n_components]
         eigenvectors = eigenvectors[:, idx][:, : self.n_components]
 
-        self.alpha_ = eigenvectors / torch.sqrt(eigenvalues.unsqueeze(0))
+        self.alpha_ = eigenvectors / torch.sqrt(
+            eigenvalues.clamp(min=1e-10).unsqueeze(0)
+        )
 
         self.embedding_ = (self.alpha_ * eigenvalues.sqrt()).to(X.device)
 

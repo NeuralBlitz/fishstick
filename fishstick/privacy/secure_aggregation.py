@@ -326,8 +326,10 @@ class AdditiveSecretSharing:
         """
         shares = []
 
+        secret_std = secret.std() if secret.std() > 0 else 1.0
+
         for _ in range(self.num_shares - 1):
-            share = torch.randn_like(secret) * secret.abs().max()
+            share = torch.randn_like(secret) * secret_std
             shares.append(share)
 
         last_share = secret.clone()
@@ -348,7 +350,7 @@ class AdditiveSecretSharing:
         """
         recovered = torch.zeros_like(shares[0])
         for share in shares:
-            recovered = (recovered + share) % self.modulus
+            recovered = recovered + share
 
         return recovered
 

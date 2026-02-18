@@ -174,6 +174,8 @@ class SignalPreprocessor(nn.Module):
     def forward(self, signal: torch.Tensor) -> torch.Tensor:
         """Preprocess signal."""
         if self.normalize and self.normalizer is not None:
+            if self.normalizer.mean is None:
+                self.normalizer.fit(signal)
             signal = self.normalizer(signal)
 
         if self.remove_dc:

@@ -463,8 +463,8 @@ class LTSA(ManifoldLearnerBase):
         """
         Compute alignment matrix for LTSA.
 
-        S = sum_i (I - Theta_i) (I - Theta_i)^T
-        where Theta_i projects onto local tangent space
+        S = sum_i (I - V_i V_i^T) (I - V_i V_i^T)^T
+        where V_i contains local tangent space coordinates
         """
         S = torch.zeros(n_samples, n_samples)
 
@@ -476,26 +476,31 @@ class LTSA(ManifoldLearnerBase):
             x_i = X_np[i]
 
             centered = neighbors - x_i
+            k = centered.shape[0]
 
             U, S_vals, Vt = np.linalg.svd(centered, full_matrices=False)
 
-            V = Vt[:d].T
+            d_local = min(d, Vt.shape[0])
 
-            k = len(neighbor_idx)
-            d_eff = min(d, V.shape[1])
+            if d_local == 0:
+                continue
 
-            if d_eff < d:
-                d = d_eff
-                if d == 0:
-                    continue
+            V = Vt[:d_local].T
 
-            Theta = V[:, :d] @ V[:, :d].T
+            one_n = np.ones((k, 1)) / k
 
-            S_i = np.eye(k) - Theta
+            local_coords = centered @ V
 
-            for j_idx, j in enumerate(neighbor_idx):
-                for l_idx, l in enumerate(neighbor_idx):
-                    S[j, l] += S_i[j_idx, l_idx]
+            local_centered = local_coords - local_coords.mean(axis=0)
+
+            if local_centered.shape[1] > 0:
+                Q, R = np.linalg.qr(local_centered)
+
+                B = np.eye(k) - one_n @ np.ones((1, k)) - Q @ Q.T
+
+                for j_idx, j in enumerate(neighbor_idx):
+                    for l_idx, l in enumerate(neighbor_idx):
+                        S[j, l] += B[j_idx, l_idx]
 
         return S
 

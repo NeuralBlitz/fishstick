@@ -49,11 +49,12 @@ from fishstick.gametheory.zero_sum_solver import (
     GradientDescentSolver,
 )
 from fishstick.gametheory.cooperative_game import (
-    CooperativeGame,
     TUGame,
     SimpleGame,
     MajorityGame,
     WeightedVotingGame,
+    CostGame,
+    NetworkGame,
 )
 from fishstick.gametheory.solution_concepts import (
     SolutionConcept,
@@ -61,7 +62,8 @@ from fishstick.gametheory.solution_concepts import (
     Nucleolus,
     Core,
     Kernel,
-    BargainingSet,
+    BanzhafIndex,
+    OwenValue,
 )
 from fishstick.gametheory.mechanism_design import (
     Mechanism,
@@ -95,7 +97,7 @@ from fishstick.gametheory.marl_algorithms import (
     MultiAgentRLAlgorithm,
     QLearning,
     PolicyGradientMARL,
-    NashQ-Learning,
+    NashQLearning,
     MeanFieldQ,
 )
 from fishstick.gametheory.evolutionary_dynamics import (
@@ -107,8 +109,9 @@ from fishstick.gametheory.evolutionary_dynamics import (
 )
 from fishstick.gametheory.population_games import (
     PopulationGame,
-    StableState,
-    EvolutionarilyStableStrategy,
+    StablePopulation,
+    find_nash_equilibrium_population,
+    check_evolutionary_stability,
 )
 
 __all__ = [
@@ -138,18 +141,20 @@ __all__ = [
     "FictitiousPlay",
     "GradientDescentSolver",
     # Cooperative games
-    "CooperativeGame",
     "TUGame",
     "SimpleGame",
     "MajorityGame",
     "WeightedVotingGame",
+    "CostGame",
+    "NetworkGame",
     # Solution concepts
     "SolutionConcept",
     "ShapleyValue",
     "Nucleolus",
     "Core",
     "Kernel",
-    "BargainingSet",
+    "BanzhafIndex",
+    "OwenValue",
     # Mechanism design
     "Mechanism",
     "MechanismDesign",
@@ -178,7 +183,7 @@ __all__ = [
     "MultiAgentRLAlgorithm",
     "QLearning",
     "PolicyGradientMARL",
-    "NashQ-Learning",
+    "NashQLearning",
     "MeanFieldQ",
     # Evolutionary dynamics
     "EvolutionaryDynamics",
@@ -188,6 +193,7 @@ __all__ = [
     "MoranProcess",
     # Population games
     "PopulationGame",
-    "StableState",
-    "EvolutionarilyStableStrategy",
+    "StablePopulation",
+    "find_nash_equilibrium_population",
+    "check_evolutionary_stability",
 ]

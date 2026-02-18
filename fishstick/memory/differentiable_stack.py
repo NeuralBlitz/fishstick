@@ -182,8 +182,9 @@ class DifferentiableQueue(nn.Module):
         shifted_weights = torch.zeros_like(queue_weights)
         shifted_weights[:-1] = queue_weights[1:]
 
+        item_avg = item.mean(dim=0, keepdim=True)
         new_memory = (
-            shifted_weights.view(-1, 1) * item.unsqueeze(0)
+            shifted_weights.view(-1, 1) * item_avg
             + (1 - shifted_weights.view(-1, 1)) * self.memory
         )
 
@@ -272,9 +273,9 @@ class DifferentiableDeque(nn.Module):
         shifted = torch.zeros_like(front_weights)
         shifted[1:] = front_weights[:-1]
 
+        item_avg = item.mean(dim=0, keepdim=True)
         new_memory = (
-            shifted.view(-1, 1) * item.unsqueeze(0)
-            + (1 - shifted.view(-1, 1)) * self.memory
+            shifted.view(-1, 1) * item_avg + (1 - shifted.view(-1, 1)) * self.memory
         )
 
         self.memory.data = new_memory
@@ -295,9 +296,9 @@ class DifferentiableDeque(nn.Module):
         shifted = torch.zeros_like(back_weights)
         shifted[:-1] = back_weights[1:]
 
+        item_avg = item.mean(dim=0, keepdim=True)
         new_memory = (
-            shifted.view(-1, 1) * item.unsqueeze(0)
-            + (1 - shifted.view(-1, 1)) * self.memory
+            shifted.view(-1, 1) * item_avg + (1 - shifted.view(-1, 1)) * self.memory
         )
 
         self.memory.data = new_memory
@@ -394,7 +395,8 @@ class PriorityQueue(nn.Module):
         read_vector = attention @ self.memory
 
         min_idx = torch.argmin(priority_scores)
-        self.memory.data[min_idx] = item.squeeze(0)
+        item_avg = item.mean(dim=0)
+        self.memory.data[min_idx] = item_avg
         self.priorities.data[min_idx] = torch.randn_like(self.priorities[0]) * 0.1
 
         return read_vector, {"attention": attention, "priority": priority_scores}

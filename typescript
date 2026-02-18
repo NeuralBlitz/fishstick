@@ -1,0 +1,81 @@
+Script started on 2026-02-17 23:07:13+00:00 [TERM="xterm-256color" TTY="/dev/pts/0" COLUMNS="45" LINES="20"]
+\[]133;D;0\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]
+\[]133;D;0\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]quit
+sh: 2: quit: not found
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]leave
+sh: 3: leave: not found
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]stop
+sh: 4: stop: not found
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]script stop
+Script started, output log file is 'stop'.
+\[]133;D;0\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]exit
+Script done.
+\[]133;D;0\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]esc
+sh: 6: esc: not found
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]
+\[]133;D;127\]\[]133;A\]\[\033[01;34m\]\w\[\033[00m\]$ \[]133;B\]pip
+
+Usage:   
+  pip <command> [options]
+
+Commands:
+  install                     Install packages.
+  download                    Download packages.
+  uninstall                   Uninstall packages.
+  freeze                      Output installed packages in requirements format.
+  inspect                     Inspect the python environment.
+  list                        List installed packages.
+  show                        Show information about installed packages.
+  check                       Verify installed packages have compatible dependencies.
+  config                      Manage local and global configuration.
+  search                      Search PyPI for packages.
+  cache                       Inspect and manage pip's wheel cache.
+  index                       Inspect information available from package indexes.
+  wheel                       Build wheels from your requirements.
+  hash                        Compute hashes of package archives.
+  completion                  A helper command used for command completion.
+  debug                       Show information useful for debugging.
+  help                        Show help for commands.
+
+General Options:
+  -h, --help           Show help.
+  --debug              Let unhandled
+                       exceptions propagate
+                       outside the main
+                       subroutine, instead
+                       of logging them to
+                       stderr.
+  --isolated           Run pip in an
+                       isolated mode,
+                       ignoring environment
+                       variables and user
+                       configuration.
+  --require-virtualenv
+                       Allow pip to only
+                       run in a virtual
+                       environment; exit
+                       with an error
+                       otherwise.
+  --python <python>    Run pip with the
+                       specified Python
+                       interpreter.
+  -v, --verbose        Give more output.
+                       Option is additive,
+                       and can be used up
+                       to 3 times.
+  -V, --version        Show version and
+                       exit.
+  -q, --quiet          Give less output.
+                       Option is additive,
+  

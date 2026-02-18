@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple, Callable
+from abc import ABC, abstractmethod
 import numpy as np
 from numpy.typing import NDArray
 from scipy import optimize
