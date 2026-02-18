@@ -7,6 +7,9 @@ Advanced signal processing tools for machine learning including:
 - Time-frequency analysis
 - Filter banks
 - Spectral pooling
+- Learnable wavelets
+- Sparse coding
+- Filter design
 
 Author: Agent 12
 """
@@ -21,6 +24,28 @@ from fishstick.signal_processing.wavelet_transform import (
     InverseWaveletTransform,
 )
 
+from fishstick.signal_processing.wavelet_learnable import (
+    LearnableWavelet,
+    AdaptiveWaveletBank,
+    LearnableWaveletLayer,
+    WaveletScattering1D,
+    StationaryWaveletTransform,
+    DualTreeWaveletTransform,
+    WaveletReconstructionLoss,
+    AdaptiveWaveletSynthesis,
+)
+
+from fishstick.signal_processing.wavelet_scattering2d import (
+    GaborWavelet2D,
+    WaveletScattering2D,
+    ScatteringResNet,
+    ConvScattering2D,
+    InvariantScatteringLoss,
+    ScatteringBatchNorm,
+    WaveletAttention2D,
+    MultiscaleScattering,
+)
+
 from fishstick.signal_processing.fourier_operators import (
     FourierLayer,
     SpectralConv1D,
@@ -29,6 +54,33 @@ from fishstick.signal_processing.fourier_operators import (
     FrequencyDomainAttention,
     FNO1D,
     SpectralResNetBlock,
+)
+
+from fishstick.signal_processing.fourier_attention import (
+    FrequencyDomainAttention,
+    SpectralAttention,
+    GlobalFrequencyContext,
+    FrequencyTokenAttention,
+    MultiScaleFrequencyAttention,
+    PhaseAwareAttention,
+    FrequencyResponseAttention,
+    ChannelFrequencyAttention,
+    CrossFrequencyAttention,
+    FrequencyLinear,
+)
+
+from fishstick.signal_processing.adaptive_fno import (
+    AdaptiveSpectralConv,
+    AdaptiveFNOBlock,
+    AdaptiveFNO1D,
+    LearnableSpectralConv,
+    FactorizedSpectralConv,
+    MultiScaleFNO,
+    KernelizedFNO,
+    TokenFNO,
+    FNOWithPositionalEncoding,
+    FNODynamicModeDecomposition,
+    HierarchicalFNO,
 )
 
 from fishstick.signal_processing.time_frequency import (
@@ -41,6 +93,35 @@ from fishstick.signal_processing.time_frequency import (
     AdaptiveTimeFrequency,
 )
 
+from fishstick.signal_processing.hilbert_transform import (
+    HilbertTransform,
+    InstantaneousFrequency,
+    AnalyticSignalConv,
+    EnvelopeExtraction,
+    PhaseExtraction,
+    InstantaneousAttributes,
+    HilbertEnvelopeLoss,
+    ComplexConv1D,
+    AnalyticFilterBank,
+    FrequencyDomainPhase,
+    EnvelopeConsistencyLoss,
+    CyclicSpectrumAnalysis,
+    TimeDomainHilbertLayer,
+)
+
+from fishstick.signal_processing.emd import (
+    EmpiricalModeDecomposition,
+    LearnableEMD,
+    EMDToIMF,
+    IMFSynthesis,
+    IMFSelectiveReconstruction,
+    IntrinsicModeFunctionFeatures,
+    EMDConvNet,
+    VariationalEMD,
+    EMDLSTM,
+    EMDAttention,
+)
+
 from fishstick.signal_processing.filter_banks import (
     GaborFilterBank,
     MorletWaveletBank,
@@ -50,6 +131,35 @@ from fishstick.signal_processing.filter_banks import (
     LearnableFilterBank,
     BiorthogonalFilterBank,
     FilterBankLayer,
+)
+
+from fishstick.signal_processing.filter_design import (
+    FIRFilterDesign,
+    IIRFilterDesign,
+    LearnableFIRFilter,
+    AdaptiveFilter,
+    WindowedSincFilter,
+    FilterBankLayer,
+    GaborFilterDesign,
+    ComplexGaborFilter,
+    PolyphaseFilterBank,
+    QuadratureMirrorFilter,
+    AllpassFilter,
+    GradientFilter,
+)
+
+from fishstick.signal_processing.sparse_coding import (
+    DictionaryLearning,
+    SparseCodingLayer,
+    KSVDLearner,
+    ConvSparseCoding,
+    SparseAutoencoder,
+    OnlineDictionaryLearning,
+    DictionaryConv1D,
+    SparseCodingLoss,
+    ScatteringSparseCoding,
+    LearnedSparsify,
+    MultiScaleSparseCoding,
 )
 
 from fishstick.signal_processing.spectral_pooling import (
@@ -77,7 +187,7 @@ from fishstick.signal_processing.utils import (
 )
 
 __all__ = [
-    # Wavelet transforms
+    # Wavelet transforms (original)
     "MorletWavelet",
     "RickerWavelet",
     "ContinuousWaveletTransform",
@@ -85,6 +195,24 @@ __all__ = [
     "WaveletPacketTransform",
     "WaveletScatteringTransform",
     "InverseWaveletTransform",
+    # Learnable wavelets
+    "LearnableWavelet",
+    "AdaptiveWaveletBank",
+    "LearnableWaveletLayer",
+    "WaveletScattering1D",
+    "StationaryWaveletTransform",
+    "DualTreeWaveletTransform",
+    "WaveletReconstructionLoss",
+    "AdaptiveWaveletSynthesis",
+    # 2D wavelet scattering
+    "GaborWavelet2D",
+    "WaveletScattering2D",
+    "ScatteringResNet",
+    "ConvScattering2D",
+    "InvariantScatteringLoss",
+    "ScatteringBatchNorm",
+    "WaveletAttention2D",
+    "MultiscaleScattering",
     # Fourier operators
     "FourierLayer",
     "SpectralConv1D",
@@ -93,6 +221,28 @@ __all__ = [
     "FrequencyDomainAttention",
     "FNO1D",
     "SpectralResNetBlock",
+    # Fourier attention
+    "SpectralAttention",
+    "GlobalFrequencyContext",
+    "FrequencyTokenAttention",
+    "MultiScaleFrequencyAttention",
+    "PhaseAwareAttention",
+    "FrequencyResponseAttention",
+    "ChannelFrequencyAttention",
+    "CrossFrequencyAttention",
+    "FrequencyLinear",
+    # Adaptive FNO
+    "AdaptiveSpectralConv",
+    "AdaptiveFNOBlock",
+    "AdaptiveFNO1D",
+    "LearnableSpectralConv",
+    "FactorizedSpectralConv",
+    "MultiScaleFNO",
+    "KernelizedFNO",
+    "TokenFNO",
+    "FNOWithPositionalEncoding",
+    "FNODynamicModeDecomposition",
+    "HierarchicalFNO",
     # Time-frequency
     "ShortTimeFourierTransform",
     "InverseSTFT",
@@ -101,6 +251,30 @@ __all__ = [
     "ReassignmentMethod",
     "GaborTransform",
     "AdaptiveTimeFrequency",
+    # Hilbert transform
+    "InstantaneousFrequency",
+    "AnalyticSignalConv",
+    "EnvelopeExtraction",
+    "PhaseExtraction",
+    "InstantaneousAttributes",
+    "HilbertEnvelopeLoss",
+    "ComplexConv1D",
+    "AnalyticFilterBank",
+    "FrequencyDomainPhase",
+    "EnvelopeConsistencyLoss",
+    "CyclicSpectrumAnalysis",
+    "TimeDomainHilbertLayer",
+    # EMD
+    "EmpiricalModeDecomposition",
+    "LearnableEMD",
+    "EMDToIMF",
+    "IMFSynthesis",
+    "IMFSelectiveReconstruction",
+    "IntrinsicModeFunctionFeatures",
+    "EMDConvNet",
+    "VariationalEMD",
+    "EMDLSTM",
+    "EMDAttention",
     # Filter banks
     "GaborFilterBank",
     "MorletWaveletBank",
@@ -109,7 +283,30 @@ __all__ = [
     "PolynomialFilterBank",
     "LearnableFilterBank",
     "BiorthogonalFilterBank",
-    "FilterBankLayer",
+    # Filter design
+    "FIRFilterDesign",
+    "IIRFilterDesign",
+    "LearnableFIRFilter",
+    "AdaptiveFilter",
+    "WindowedSincFilter",
+    "GaborFilterDesign",
+    "ComplexGaborFilter",
+    "PolyphaseFilterBank",
+    "QuadratureMirrorFilter",
+    "AllpassFilter",
+    "GradientFilter",
+    # Sparse coding
+    "DictionaryLearning",
+    "SparseCodingLayer",
+    "KSVDLearner",
+    "ConvSparseCoding",
+    "SparseAutoencoder",
+    "OnlineDictionaryLearning",
+    "DictionaryConv1D",
+    "SparseCodingLoss",
+    "ScatteringSparseCoding",
+    "LearnedSparsify",
+    "MultiScaleSparseCoding",
     # Spectral pooling
     "SpectralPooling",
     "FourierPooling",

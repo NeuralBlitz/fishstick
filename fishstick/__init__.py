@@ -274,16 +274,69 @@ except ImportError:
     _CONTINUAL_AVAILABLE = False
 
 try:
-    from .active import (
+    from .active.learning import (
+        # Query strategies
         UncertaintySampling,
         MarginSampling,
         EntropySampling,
-        BALD,
+        RandomSampling,
+        ClusterBasedSampling,
+        DensityWeightedSampling,
+        # Uncertainty estimation
+        MCDropoutUncertainty,
+        EnsembleUncertainty,
+        BayesianUncertainty,
+        EvidentialUncertainty,
+        # Batch active learning
+        BatchBALD,
         CoreSet,
+        BADGE,
+        BatchActive,
+        GreedyBatch,
+        # Diversity sampling
+        KCenterSampling,
+        KMeansSampling,
+        RepresentativeSampling,
+        DiversityAwareSampling,
+        AdversarialSampling,
+        # Expected model change
+        EGL,
+        BALD,
+        VariationRatio,
+        InformationGain,
+        # Pool and stream
+        PoolBasedAL,
+        StreamBasedAL,
+        MembershipQuerySynthesis,
+        # Multi-task
+        MultiTaskAL,
+        TransferActive,
+        DomainAdaptiveAL,
+        # Evaluation
+        LearningCurve,
+        AnnotationCost,
+        ALBenchmark,
+        ALVisualization,
+        # Integration
+        ActiveDataset,
+        ActiveTrainer,
+        ActiveLoop,
+        # Factories
+        create_query_strategy,
+        create_batch_strategy,
+        create_uncertainty_estimator,
+        # Utilities
+        compute_query_diversity,
+        compute_coverage,
+        active_learning_summary,
+        # Base classes
+        QueryStrategy,
+        UncertaintyEstimator,
+        BatchQueryStrategy,
     )
 
     _ACTIVE_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     _ACTIVE_AVAILABLE = False
 
 try:
@@ -729,8 +782,49 @@ __all__ = [
     "UncertaintySampling",
     "MarginSampling",
     "EntropySampling",
-    "BALD",
+    "RandomSampling",
+    "ClusterBasedSampling",
+    "DensityWeightedSampling",
+    "MCDropoutUncertainty",
+    "EnsembleUncertainty",
+    "BayesianUncertainty",
+    "EvidentialUncertainty",
+    "BatchBALD",
     "CoreSet",
+    "BADGE",
+    "BatchActive",
+    "GreedyBatch",
+    "KCenterSampling",
+    "KMeansSampling",
+    "RepresentativeSampling",
+    "DiversityAwareSampling",
+    "AdversarialSampling",
+    "EGL",
+    "BALD",
+    "VariationRatio",
+    "InformationGain",
+    "PoolBasedAL",
+    "StreamBasedAL",
+    "MembershipQuerySynthesis",
+    "MultiTaskAL",
+    "TransferActive",
+    "DomainAdaptiveAL",
+    "LearningCurve",
+    "AnnotationCost",
+    "ALBenchmark",
+    "ALVisualization",
+    "ActiveDataset",
+    "ActiveTrainer",
+    "ActiveLoop",
+    "create_query_strategy",
+    "create_batch_strategy",
+    "create_uncertainty_estimator",
+    "compute_query_diversity",
+    "compute_coverage",
+    "active_learning_summary",
+    "QueryStrategy",
+    "UncertaintyEstimator",
+    "BatchQueryStrategy",
     # Neuroscience
     "LeakyIntegrateAndFire",
     "HodgkinHuxley",
@@ -928,3 +1022,47 @@ try:
 except ImportError as e:
     print(f"Logic module import error: {e}")
     _LOGIC_AVAILABLE = False
+
+try:
+    from .generative import (
+        DDPM,
+        DiffusionScheduler,
+        DDIM,
+        DDIMScheduler,
+        ScoreBasedModel,
+        ScoreNetwork,
+        AnnealedLangevinDynamics,
+        LatentDiffusionModel,
+        AutoencoderKL,
+        VQModel,
+        StyleGAN,
+        StyleGAN2,
+        MappingNetwork,
+        SynthesisNetwork,
+        StyleGAN2Generator,
+        ProgressiveGrowing,
+        BigGAN,
+        ConditionalGenerator,
+        ProjectionDiscriminator,
+        AutoregressiveTransformer,
+        PositionalEncoding,
+        GPTGenerator,
+        GPT2LMHeadModel,
+        PixelCNN,
+        PixelCNNPP,
+        GatedMaskedConv2d,
+        EnergyBasedModel,
+        ConvEnergyModel,
+        LangevinSampler,
+        HMCSampler,
+        EBMTrainer,
+        FlowMatching,
+        ConditionalFlowMatching,
+        OptimalTransportFlow,
+        SinkhornDivergence,
+    )
+
+    _GENERATIVE_AVAILABLE = True
+except ImportError as e:
+    print(f"Generative module import error: {e}")
+    _GENERATIVE_AVAILABLE = False

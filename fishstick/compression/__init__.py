@@ -1,12 +1,12 @@
 """
-Model Compression and Optimization Module for fishstick
+Model Compression Module for fishstick
 
-Provides tools for:
-- Pruning: Remove redundant weights
-- Quantization: Reduce precision for faster inference
-- Knowledge Distillation: Transfer to smaller models
-- ONNX Export: Cross-platform deployment
-- TorchScript: Production optimization
+Advanced model compression techniques including:
+- Pruning: Magnitude, structured, lottery ticket, sensitivity-based
+- Quantization: Dynamic, static, QAT, INT8/FP16, mixed precision
+- Knowledge Distillation: Logit, feature, attention, progressive
+- Sparsity: Unstructured, block, N:M (2:4), vector, semi-structured
+- Utilities: Model size, MACs counting, compression ratios
 """
 
 from typing import Optional, Dict, Any, Union, Callable
@@ -15,51 +15,88 @@ from torch import nn
 import numpy as np
 import copy
 
+from .pruning import (
+    MagnitudePruner,
+    StructuredPruner,
+    LotteryTicketPruner,
+    GradualMagnitudeScheduler,
+    SensitivityPruner,
+    DependencyAwarePruner,
+)
+
+from .quantization import (
+    FakeQuantizeModule,
+    QuantizedLinear,
+    QuantizedConv2d,
+    DynamicQuantizer,
+    StaticQuantizer,
+    QuantizationAwareTrainer,
+    MixedPrecisionQuantizer,
+    FP16Quantizer,
+    INT8Quantizer,
+)
+
+from .distillation import (
+    LogitDistillation,
+    FeatureDistillation,
+    AttentionTransfer,
+    RelationDistillation,
+    ProgressiveDistillation,
+    MultiStageDistillation,
+    ContrastiveDistillation,
+    ComprehensiveDistillation,
+    DistillationTrainer,
+)
+
+from .sparsity import (
+    UnstructuredSparsity,
+    BlockSparsity,
+    NMSparsity,
+    TwoFourSparsity,
+    VectorSparsity,
+    SemiStructuredSparsity,
+    SparsityScheduler,
+)
+
+from .compression_utils import (
+    count_parameters,
+    count_nonzero_parameters,
+    get_model_sparsity,
+    get_layer_sparsity,
+    estimate_model_size,
+    get_actual_model_size,
+    count_model_macs,
+    MACsCounter,
+    calculate_compression_ratio,
+    compare_models,
+    get_model_summary,
+    print_model_summary,
+)
+
 
 class Pruner:
     """
-    Model pruning for removing redundant parameters.
+    High-level pruning interface combining multiple pruning methods.
 
     Supports magnitude-based, structured, and unstructured pruning.
     """
 
     def __init__(self, model: nn.Module, pruning_type: str = "magnitude"):
-        """
-        Args:
-            model: Model to prune
-            pruning_type: "magnitude", "structured", or "random"
-        """
         self.model = model
         self.pruning_type = pruning_type
         self.pruned_params = {}
 
     def prune_magnitude(self, amount: float = 0.3) -> nn.Module:
-        """
-        Prune weights with smallest magnitudes.
-
-        Args:
-            amount: Fraction of weights to prune (0-1)
-
-        Returns:
-            Pruned model
-        """
+        """Prune weights with smallest magnitudes."""
         pruned_model = copy.deepcopy(self.model)
 
         for name, module in pruned_model.named_modules():
             if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
-                # Get weight magnitude
                 weight = module.weight.data.abs()
-
-                # Compute threshold
                 threshold = torch.quantile(weight.flatten(), amount)
-
-                # Create mask
                 mask = weight > threshold
-
-                # Apply mask
                 module.weight.data *= mask.float()
 
-                # Store pruning info
                 self.pruned_params[name] = {
                     "original_shape": module.weight.shape,
                     "num_params": module.weight.numel(),
@@ -69,37 +106,24 @@ class Pruner:
         return pruned_model
 
     def prune_structured(self, amount: float = 0.3, dim: int = 0) -> nn.Module:
-        """
-        Structured pruning (remove entire neurons/channels).
-
-        Args:
-            amount: Fraction to prune
-            dim: Dimension to prune (0 for output, 1 for input)
-
-        Returns:
-            Pruned model
-        """
+        """Structured pruning (remove entire neurons/channels)."""
         pruned_model = copy.deepcopy(self.model)
 
         for name, module in pruned_model.named_modules():
             if isinstance(module, nn.Linear):
-                # Compute L1 norm of each neuron/channel
                 weight = module.weight.data
                 norms = weight.abs().sum(dim=1 - dim)
 
-                # Compute threshold
                 k = int(amount * len(norms))
                 threshold = torch.kthvalue(norms, k)[0] if k > 0 else norms.min() - 1
 
-                # Create mask
                 mask = norms > threshold
 
-                # Apply mask
-                if dim == 0:  # Prune output neurons
+                if dim == 0:
                     module.weight.data[mask == False] = 0
                     if module.bias is not None:
                         module.bias.data[mask == False] = 0
-                else:  # Prune input connections
+                else:
                     module.weight.data[:, mask == False] = 0
 
         return pruned_model
@@ -118,7 +142,7 @@ class Pruner:
 
 class Quantizer:
     """
-    Model quantization for efficient inference.
+    High-level quantization interface.
 
     Supports INT8 and FP16 quantization.
     """
@@ -127,44 +151,23 @@ class Quantizer:
         self.model = model
 
     def quantize_dynamic(self, dtype: torch.dtype = torch.qint8) -> nn.Module:
-        """
-        Dynamic quantization (activations quantized at runtime).
-
-        Args:
-            dtype: Quantization type (torch.qint8 or torch.float16)
-
-        Returns:
-            Quantized model
-        """
+        """Dynamic quantization (activations quantized at runtime)."""
         quantized_model = torch.quantization.quantize_dynamic(
             self.model, {nn.Linear, nn.LSTM, nn.GRU}, dtype=dtype
         )
         return quantized_model
 
     def quantize_static(self, calibration_data: torch.Tensor) -> nn.Module:
-        """
-        Static quantization (requires calibration).
-
-        Args:
-            calibration_data: Sample data for calibration
-
-        Returns:
-            Quantized model
-        """
+        """Static quantization (requires calibration)."""
         model = copy.deepcopy(self.model)
         model.eval()
 
-        # Configure quantization
         model.qconfig = torch.quantization.get_default_qconfig("fbgemm")
-
-        # Prepare for quantization
         torch.quantization.prepare(model, inplace=True)
 
-        # Calibrate
         with torch.no_grad():
             model(calibration_data)
 
-        # Convert to quantized model
         torch.quantization.convert(model, inplace=True)
 
         return model
@@ -175,15 +178,19 @@ class Quantizer:
 
     def get_model_size(self, model: nn.Module) -> int:
         """Get model size in bytes."""
-        torch.save(model.state_dict(), "/tmp/temp_model.pt")
-        size = Path("/tmp/temp_model.pt").stat().st_size
-        Path("/tmp/temp_model.pt").unlink()
+        import tempfile
+        import os
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pt") as f:
+            torch.save(model.state_dict(), f.name)
+            size = os.path.getsize(f.name)
+            os.unlink(f.name)
         return size
 
 
 class KnowledgeDistiller:
     """
-    Knowledge distillation for training smaller models.
+    High-level knowledge distillation interface.
 
     Transfer knowledge from teacher to student model.
     """
@@ -195,13 +202,6 @@ class KnowledgeDistiller:
         temperature: float = 4.0,
         alpha: float = 0.7,
     ):
-        """
-        Args:
-            teacher: Teacher model (large, trained)
-            student: Student model (small, to be trained)
-            temperature: Softmax temperature for distillation
-            alpha: Weight for distillation loss (vs hard targets)
-        """
         self.teacher = teacher
         self.student = student
         self.temperature = temperature
@@ -215,24 +215,16 @@ class KnowledgeDistiller:
         teacher_logits: torch.Tensor,
         labels: torch.Tensor,
     ) -> torch.Tensor:
-        """
-        Compute distillation loss.
-
-        Loss = α * soft_cross_entropy + (1-α) * hard_cross_entropy
-        """
-        # Soft targets from teacher
+        """Compute distillation loss."""
         soft_targets = nn.functional.softmax(teacher_logits / self.temperature, dim=1)
         soft_prob = nn.functional.log_softmax(student_logits / self.temperature, dim=1)
 
-        # Distillation loss (KL divergence)
         distillation_loss = nn.functional.kl_div(
             soft_prob, soft_targets, reduction="batchmean"
         ) * (self.temperature**2)
 
-        # Hard targets loss
         hard_loss = nn.functional.cross_entropy(student_logits, labels)
 
-        # Combined loss
         loss = self.alpha * distillation_loss + (1 - self.alpha) * hard_loss
 
         return loss
@@ -244,17 +236,13 @@ class KnowledgeDistiller:
         self.student.train()
         optimizer.zero_grad()
 
-        # Get teacher predictions (no grad)
         with torch.no_grad():
             teacher_logits = self.teacher(x)
 
-        # Get student predictions
         student_logits = self.student(x)
 
-        # Compute loss
         loss = self.distillation_loss(student_logits, teacher_logits, y)
 
-        # Backward pass
         loss.backward()
         optimizer.step()
 
@@ -262,9 +250,7 @@ class KnowledgeDistiller:
 
 
 class ONNXExporter:
-    """
-    Export models to ONNX format for cross-platform deployment.
-    """
+    """Export models to ONNX format for cross-platform deployment."""
 
     def __init__(self, model: nn.Module):
         self.model = model
@@ -275,26 +261,14 @@ class ONNXExporter:
         input_shape: tuple = (1, 3, 224, 224),
         opset_version: int = 11,
     ) -> str:
-        """
-        Export model to ONNX.
-
-        Args:
-            output_path: Path to save ONNX model
-            input_shape: Input tensor shape
-            opset_version: ONNX opset version
-
-        Returns:
-            Path to exported model
-        """
+        """Export model to ONNX."""
         try:
             import onnx
         except ImportError:
             raise ImportError("onnx not installed. Run: pip install onnx")
 
-        # Create dummy input
         dummy_input = torch.randn(*input_shape)
 
-        # Export
         torch.onnx.export(
             self.model,
             dummy_input,
@@ -307,7 +281,6 @@ class ONNXExporter:
             dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
         )
 
-        # Verify
         onnx_model = onnx.load(output_path)
         onnx.checker.check_model(onnx_model)
 
@@ -315,34 +288,19 @@ class ONNXExporter:
 
 
 class TorchScriptCompiler:
-    """
-    Compile models to TorchScript for production.
-    """
+    """Compile models to TorchScript for production."""
 
     def __init__(self, model: nn.Module):
         self.model = model
 
     def compile_script(self, example_input: torch.Tensor) -> torch.jit.ScriptModule:
-        """
-        Compile model using tracing.
-
-        Args:
-            example_input: Example input for tracing
-
-        Returns:
-            Compiled TorchScript model
-        """
+        """Compile model using tracing."""
         self.model.eval()
         scripted_model = torch.jit.trace(self.model, example_input)
         return scripted_model
 
     def compile_annotate(self) -> torch.jit.ScriptModule:
-        """
-        Compile model using annotations (if model supports it).
-
-        Returns:
-            Compiled TorchScript model
-        """
+        """Compile model using annotations."""
         return torch.jit.script(self.model)
 
     def save(self, scripted_model: torch.jit.ScriptModule, path: str) -> None:
@@ -354,9 +312,9 @@ class TorchScriptCompiler:
         return torch.jit.load(path)
 
 
-class ModelOptimizer:
+class ModelCompressor:
     """
-    High-level model optimization pipeline.
+    High-level model compression pipeline.
 
     Applies multiple optimization techniques in sequence.
     """
@@ -365,74 +323,56 @@ class ModelOptimizer:
         self.model = model
         self.optimization_history = []
 
-    def optimize(
+    def compress(
         self,
         prune_amount: float = 0.0,
         quantize: bool = False,
-        compile_torchscript: bool = False,
+        sparsity_type: Optional[str] = None,
+        sparsity_amount: float = 0.5,
         calibration_data: Optional[torch.Tensor] = None,
     ) -> nn.Module:
-        """
-        Apply optimization pipeline.
+        """Apply compression pipeline."""
+        compressed_model = copy.deepcopy(self.model)
 
-        Args:
-            prune_amount: Amount to prune (0-1)
-            quantize: Whether to quantize
-            compile_torchscript: Whether to compile to TorchScript
-            calibration_data: Data for calibration (if quantizing)
-
-        Returns:
-            Optimized model
-        """
-        optimized_model = self.model
-
-        # Pruning
         if prune_amount > 0:
-            pruner = Pruner(optimized_model)
-            optimized_model = pruner.prune_magnitude(prune_amount)
-            sparsity = pruner.get_sparsity(optimized_model)
+            pruner = MagnitudePruner(compressed_model, sparsity=prune_amount)
+            pruner.prune()
+            sparsity = get_model_sparsity(compressed_model)
             self.optimization_history.append(f"Pruned: {sparsity:.2%} sparsity")
 
-        # Quantization
-        if quantize:
-            quantizer = Quantizer(optimized_model)
-            if calibration_data is not None:
-                optimized_model = quantizer.quantize_static(calibration_data)
+        if sparsity_type is not None:
+            if sparsity_type == "unstructured":
+                sparsity = UnstructuredSparsity(sparsity_amount)
+            elif sparsity_type == "block":
+                sparsity = BlockSparsity(sparsity_amount)
+            elif sparsity_type == "2:4":
+                sparsity = TwoFourSparsity()
             else:
-                optimized_model = quantizer.quantize_dynamic()
+                sparsity = UnstructuredSparsity(sparsity_amount)
+
+            sparsity.apply_to_model(compressed_model)
+            self.optimization_history.append(f"Sparsity: {sparsity_type}")
+
+        if quantize:
+            quantizer = Quantizer(compressed_model)
+            if calibration_data is not None:
+                compressed_model = quantizer.quantize_static(calibration_data)
+            else:
+                compressed_model = quantizer.quantize_dynamic()
             self.optimization_history.append("Quantized: INT8")
 
-        # TorchScript compilation
-        if compile_torchscript:
-            compiler = TorchScriptCompiler(optimized_model)
-            dummy_input = torch.randn(1, 3, 224, 224)
-            optimized_model = compiler.compile_script(dummy_input)
-            self.optimization_history.append("Compiled: TorchScript")
-
-        return optimized_model
+        return compressed_model
 
     def benchmark(
         self, model: nn.Module, input_tensor: torch.Tensor, num_runs: int = 100
     ) -> Dict[str, float]:
-        """
-        Benchmark model inference speed.
-
-        Args:
-            model: Model to benchmark
-            input_tensor: Input for inference
-            num_runs: Number of inference runs
-
-        Returns:
-            Benchmark results
-        """
+        """Benchmark model inference speed."""
         model.eval()
 
-        # Warmup
         with torch.no_grad():
             for _ in range(10):
                 _ = model(input_tensor)
 
-        # Benchmark
         import time
 
         start_time = time.time()
@@ -449,8 +389,11 @@ class ModelOptimizer:
             "throughput": num_runs / elapsed,
         }
 
+    def get_compression_report(self) -> str:
+        """Get compression history report."""
+        return "\n".join(self.optimization_history)
 
-# Convenience functions
+
 def prune_model(model: nn.Module, amount: float = 0.3) -> nn.Module:
     """Prune model weights."""
     pruner = Pruner(model)
@@ -483,9 +426,69 @@ def compile_torchscript(
     return compiler.compile_script(example_input)
 
 
-def optimize_model(
-    model: nn.Module, prune_amount: float = 0.0, quantize: bool = False
+def compress_model(
+    model: nn.Module,
+    prune_amount: float = 0.0,
+    quantize: bool = False,
 ) -> nn.Module:
-    """Apply full optimization pipeline."""
-    optimizer = ModelOptimizer(model)
-    return optimizer.optimize(prune_amount=prune_amount, quantize=quantize)
+    """Apply full compression pipeline."""
+    compressor = ModelCompressor(model)
+    return compressor.compress(prune_amount=prune_amount, quantize=quantize)
+
+
+__all__ = [
+    "MagnitudePruner",
+    "StructuredPruner",
+    "LotteryTicketPruner",
+    "GradualMagnitudeScheduler",
+    "SensitivityPruner",
+    "DependencyAwarePruner",
+    "FakeQuantizeModule",
+    "QuantizedLinear",
+    "QuantizedConv2d",
+    "DynamicQuantizer",
+    "StaticQuantizer",
+    "QuantizationAwareTrainer",
+    "MixedPrecisionQuantizer",
+    "FP16Quantizer",
+    "INT8Quantizer",
+    "LogitDistillation",
+    "FeatureDistillation",
+    "AttentionTransfer",
+    "RelationDistillation",
+    "ProgressiveDistillation",
+    "MultiStageDistillation",
+    "ContrastiveDistillation",
+    "ComprehensiveDistillation",
+    "DistillationTrainer",
+    "UnstructuredSparsity",
+    "BlockSparsity",
+    "NMSparsity",
+    "TwoFourSparsity",
+    "VectorSparsity",
+    "SemiStructuredSparsity",
+    "SparsityScheduler",
+    "count_parameters",
+    "count_nonzero_parameters",
+    "get_model_sparsity",
+    "get_layer_sparsity",
+    "estimate_model_size",
+    "get_actual_model_size",
+    "count_model_macs",
+    "MACsCounter",
+    "calculate_compression_ratio",
+    "compare_models",
+    "get_model_summary",
+    "print_model_summary",
+    "Pruner",
+    "Quantizer",
+    "KnowledgeDistiller",
+    "ONNXExporter",
+    "TorchScriptCompiler",
+    "ModelCompressor",
+    "prune_model",
+    "quantize_model",
+    "export_onnx",
+    "compile_torchscript",
+    "compress_model",
+]

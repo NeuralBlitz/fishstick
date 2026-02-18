@@ -1,0 +1,188 @@
+"""
+Uncertainty Quantification Extensions
+
+Extended uncertainty quantification tools including:
+- Conformal prediction implementations
+- Temperature scaling for calibration
+- Ensemble disagreement measures
+- Epistemic vs aleatoric uncertainty decomposition
+- Uncertainty-aware training losses
+- Batch BALD for active learning
+- Comprehensive uncertainty metrics
+"""
+
+from .conformal_prediction import (
+    BaseConformalPredictor,
+    AdaptiveConformalPredictor,
+    SplitConformalPredictor,
+    JackknifePlusPredictor,
+    CVPlusPredictor,
+    WeightedConformalPredictor,
+    ConformalRegressor,
+    AdaptivePredictionIntervals,
+)
+
+from .temperature_scaling import (
+    TemperatureScaling,
+    VectorTemperatureScaling,
+    ClassWiseTemperatureScaling,
+    PlattScaling,
+    BetaCalibration,
+    IsotonicCalibrator,
+    HistogramCalibrator,
+    FocalTemperatureScaling,
+    MixupCalibrator,
+    OnlineCalibrator,
+)
+
+from .ensemble_disagreement import (
+    EnsembleDisagreement,
+    VarianceDisagreement,
+    EntropyDisagreement,
+    MutualInformationDisagreement,
+    CosineDisagreement,
+    PairwiseKLDisagreement,
+    DisagreementEnsemble,
+    DoubleSoftmaxDisagreement,
+    SelectiveDisagreement,
+    DiversityEnsemble,
+    QueryByDisagreement,
+    AdversarialDisagreement,
+    DisagreementVisualizer,
+)
+
+from .epistemic_aleatoric import (
+    EpistemicAleatoricDecomposition,
+    EnsembleUncertaintyDecomposition,
+    MutualInformationUncertainty,
+    DropoutUncertaintyDecomposition,
+    SWAGUncertaintyDecomposition,
+    GradientUncertaintyDecomposition,
+    EvidentialUncertaintyDecomposition,
+    DataUncertaintyEstimator,
+    SpectralNormalizedDecomposition,
+    NGBoostUncertaintyDecomposition,
+    UncertaintyDecompositionAnalyzer,
+)
+
+from .uncertainty_losses import (
+    FocalLossWithUncertainty,
+    LabelSmoothingWithUncertainty,
+    EvidentialRegressionLoss,
+    EvidentialClassificationLoss,
+    UncertaintyAwareContrastiveLoss,
+    MixupUncertaintyLoss,
+    HeteroscedasticLoss,
+    BootstrapUncertaintyLoss,
+    ConfidenceWeightedLoss,
+    DistributionUncertaintyLoss,
+    SemanticUncertaintyLoss,
+    SoftTargetLoss,
+    VariancePenaltyLoss,
+)
+
+from .batch_bald import (
+    BALD,
+    BatchBALD,
+    ExpectedEntropySearch,
+    VarianceReduction,
+    BALDWithAbstention,
+    CoreSetSelection,
+    AdaptiveBALD,
+)
+
+from .uncertainty_metrics import (
+    expected_calibration_error,
+    maximum_calibration_error,
+    negative_log_likelihood,
+    brier_score,
+    brier_decomposition,
+    auroc_ood_detection,
+    confidence_accuracy_correlation,
+    selective_accuracy_at_recall,
+    nll_decomposition,
+    uncertainty_ranking_correlation,
+    calibration_curve,
+    test_calibration,
+    compute_uncertainty_metrics,
+    UncertaintyMetricTracker,
+)
+
+__all__ = [
+    "BaseConformalPredictor",
+    "AdaptiveConformalPredictor",
+    "SplitConformalPredictor",
+    "JackknifePlusPredictor",
+    "CVPlusPredictor",
+    "WeightedConformalPredictor",
+    "ConformalRegressor",
+    "AdaptivePredictionIntervals",
+    "TemperatureScaling",
+    "VectorTemperatureScaling",
+    "ClassWiseTemperatureScaling",
+    "PlattScaling",
+    "BetaCalibration",
+    "IsotonicCalibrator",
+    "HistogramCalibrator",
+    "FocalTemperatureScaling",
+    "MixupCalibrator",
+    "OnlineCalibrator",
+    "EnsembleDisagreement",
+    "VarianceDisagreement",
+    "EntropyDisagreement",
+    "MutualInformationDisagreement",
+    "CosineDisagreement",
+    "PairwiseKLDisagreement",
+    "DisagreementEnsemble",
+    "DoubleSoftmaxDisagreement",
+    "SelectiveDisagreement",
+    "DiversityEnsemble",
+    "QueryByDisagreement",
+    "AdversarialDisagreement",
+    "DisagreementVisualizer",
+    "EpistemicAleatoricDecomposition",
+    "EnsembleUncertaintyDecomposition",
+    "MutualInformationUncertainty",
+    "DropoutUncertaintyDecomposition",
+    "SWAGUncertaintyDecomposition",
+    "GradientUncertaintyDecomposition",
+    "EvidentialUncertaintyDecomposition",
+    "DataUncertaintyEstimator",
+    "SpectralNormalizedDecomposition",
+    "NGBoostUncertaintyDecomposition",
+    "UncertaintyDecompositionAnalyzer",
+    "FocalLossWithUncertainty",
+    "LabelSmoothingWithUncertainty",
+    "EvidentialRegressionLoss",
+    "EvidentialClassificationLoss",
+    "UncertaintyAwareContrastiveLoss",
+    "MixupUncertaintyLoss",
+    "HeteroscedasticLoss",
+    "BootstrapUncertaintyLoss",
+    "ConfidenceWeightedLoss",
+    "DistributionUncertaintyLoss",
+    "SemanticUncertaintyLoss",
+    "SoftTargetLoss",
+    "VariancePenaltyLoss",
+    "BALD",
+    "BatchBALD",
+    "ExpectedEntropySearch",
+    "VarianceReduction",
+    "BALDWithAbstention",
+    "CoreSetSelection",
+    "AdaptiveBALD",
+    "expected_calibration_error",
+    "maximum_calibration_error",
+    "negative_log_likelihood",
+    "brier_score",
+    "brier_decomposition",
+    "auroc_ood_detection",
+    "confidence_accuracy_correlation",
+    "selective_accuracy_at_recall",
+    "nll_decomposition",
+    "uncertainty_ranking_correlation",
+    "calibration_curve",
+    "test_calibration",
+    "compute_uncertainty_metrics",
+    "UncertaintyMetricTracker",
+]
