@@ -1,626 +1,1140 @@
 """
-Model Compression Tools
-
-Utilities for model compression including pruning, quantization, and knowledge distillation.
+Fishstick - Comprehensive Compression Module
+A high-performance, feature-rich compression library for Python.
 """
 
-from typing import Optional, List, Dict, Callable, Tuple, Union
-import torch
-import torch.nn as nn
-import torch.nn.utils.prune as prune
-import torch.quantization
-import copy
-from collections import OrderedDict
+from __future__ import annotations
+
+import abc
+import bz2
+import gzip
+import io
+import os
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+import zipfile
+from pathlib import Path
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    TypeVar,
+    Union,
+    runtime_checkable,
+)
+
+try:
+    import lz4.frame
+
+    HAS_LZ4 = True
+except ImportError:
+    HAS_LZ4 = False
+
+try:
+    import zstandard as zstd
+
+    HAS_ZSTD = True
+except ImportError:
+    HAS_ZSTD = False
+
+try:
+    import brotli
+
+    HAS_BROTLI = True
+except ImportError:
+    HAS_BROTLI = False
+
+try:
+    import lzma
+
+    HAS_LZMA = True
+except ImportError:
+    HAS_LZMA = False
+
+try:
+    from PIL import Image
+
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
+
+try:
+    import av
+
+    HAS_AV = True
+except ImportError:
+    HAS_AV = False
+
+try:
+    import torch
+    import torch.nn as nn
+
+    HAS_TORCH = True
+except ImportError:
+    HAS_TORCH = False
+
+T = TypeVar("T")
 
 
-class MagnitudePruner:
-    """
-    Magnitude-based unstructured pruning.
-
-    Prunes weights with smallest absolute magnitude.
-
-    Args:
-        model: Model to prune
-        amount: Fraction of weights to prune (0-1)
-        module_types: Types of modules to prune (default: Linear, Conv2d)
-
-    Example:
-        >>> pruner = MagnitudePruner(model, amount=0.3)
-        >>> pruner.prune()  # Prune 30% of weights
-        >>> pruner.remove()  # Make pruning permanent
-    """
-
-    def __init__(
-        self,
-        model: nn.Module,
-        amount: float = 0.3,
-        module_types: Optional[tuple] = None,
-    ):
-        self.model = model
-        self.amount = amount
-        self.module_types = module_types or (nn.Linear, nn.Conv2d)
-        self.pruned_modules = []
-
-    def prune(self):
-        """Apply magnitude pruning to the model."""
-        for name, module in self.model.named_modules():
-            if isinstance(module, self.module_types):
-                prune.l1_unstructured(module, name="weight", amount=self.amount)
-                self.pruned_modules.append((name, module))
-
-        total_params = sum(p.numel() for p in self.model.parameters())
-        nonzero_params = sum((p != 0).sum().item() for p in self.model.parameters())
-        sparsity = 1 - (nonzero_params / total_params)
-
-        print(f"Pruned model: {sparsity * 100:.2f}% sparsity")
-        return sparsity
-
-    def remove(self):
-        """Make pruning permanent by removing pruning reparameterization."""
-        for name, module in self.pruned_modules:
-            prune.remove(module, "weight")
-
-    def get_sparsity(self) -> Dict[str, float]:
-        """Get sparsity statistics for each layer."""
-        stats = {}
-        for name, module in self.model.named_modules():
-            if isinstance(module, self.module_types):
-                weight = module.weight
-                sparsity = (weight == 0).sum().item() / weight.numel()
-                stats[name] = sparsity
-        return stats
+# ============================================================================
+# Base Compression Interfaces
+# ============================================================================
 
 
-class StructuredPruner:
-    """
-    Structured pruning (remove entire channels/filters).
+@runtime_checkable
+class Compressor(Protocol):
+    """Base protocol for compression operations."""
 
-    Args:
-        model: Model to prune
-        amount: Fraction of channels to prune (0-1)
-        norm: Norm to use for ranking (1 or 2)
-
-    Example:
-        >>> pruner = StructuredPruner(model, amount=0.2)
-        >>> pruner.prune_conv2d()  # Prune Conv2d channels
-    """
-
-    def __init__(self, model: nn.Module, amount: float = 0.2, norm: int = 1):
-        self.model = model
-        self.amount = amount
-        self.norm = norm
-
-    def prune_conv2d(self):
-        """Prune Conv2d filters based on L-norm."""
-        for name, module in self.model.named_modules():
-            if isinstance(module, nn.Conv2d):
-                # Compute norm for each filter
-                weight = module.weight.data
-                norms = (
-                    weight.abs().pow(self.norm).sum(dim=[1, 2, 3]).pow(1 / self.norm)
-                )
-
-                # Determine how many filters to prune
-                n_prune = int(self.amount * len(norms))
-
-                if n_prune > 0:
-                    # Get indices of filters with smallest norms
-                    prune_indices = torch.argsort(norms)[:n_prune]
-
-                    # Zero out pruned filters
-                    with torch.no_grad():
-                        weight[prune_indices] = 0
+    def compress(self, data: bytes) -> bytes: ...
+    def decompress(self, data: bytes) -> bytes: ...
 
 
-class LotteryTicketPruner:
-    """
-    Lottery Ticket Hypothesis pruning.
+@runtime_checkable
+class ArchiveHandler(Protocol):
+    """Base protocol for archive operations."""
 
-    Iterative pruning with weight rewinding.
+    def create(self, files: List[Tuple[str, bytes]], output_path: str) -> None: ...
+    def extract(self, archive_path: str, output_dir: str) -> List[str]: ...
+    def list_contents(self, archive_path: str) -> List[str]: ...
 
-    Reference: Frankle & Carbin, "The Lottery Ticket Hypothesis", 2019
 
-    Args:
-        model: Model to prune
-        initial_amount: Initial pruning amount
-        pruning_rate: Rate to increase pruning per iteration
-        num_iterations: Number of pruning iterations
+class BaseCompressor(abc.ABC):
+    """Abstract base class for all compressor implementations."""
 
-    Example:
-        >>> ltp = LotteryTicketPruner(model, initial_amount=0.1, num_iterations=5)
-        >>> masks = ltp.prune()  # Get winning ticket masks
-    """
+    @abc.abstractmethod
+    def compress(self, data: bytes) -> bytes:
+        """Compress data."""
+        pass
 
-    def __init__(
-        self,
-        model: nn.Module,
-        initial_amount: float = 0.1,
-        pruning_rate: float = 0.2,
-        num_iterations: int = 5,
-    ):
-        self.model = model
-        self.initial_amount = initial_amount
-        self.pruning_rate = pruning_rate
-        self.num_iterations = num_iterations
+    @abc.abstractmethod
+    def decompress(self, data: bytes) -> bytes:
+        """Decompress data."""
+        pass
 
-        # Save initial weights
-        self.initial_weights = {
-            name: param.clone() for name, param in model.named_parameters()
-        }
+    def compress_file(self, input_path: str, output_path: Optional[str] = None) -> str:
+        """Compress a file."""
+        if output_path is None:
+            output_path = input_path + self.get_extension()
+        with open(input_path, "rb") as f:
+            data = f.read()
+        compressed = self.compress(data)
+        with open(output_path, "wb") as f:
+            f.write(compressed)
+        return output_path
 
-    def prune(self) -> Dict[str, torch.Tensor]:
-        """
-        Perform iterative magnitude pruning with rewinding.
+    def decompress_file(
+        self, input_path: str, output_path: Optional[str] = None
+    ) -> str:
+        """Decompress a file."""
+        with open(input_path, "rb") as f:
+            data = f.read()
+        decompressed = self.decompress(data)
+        if output_path is None:
+            output_path = input_path.replace(self.get_extension(), "")
+        with open(output_path, "wb") as f:
+            f.write(decompressed)
+        return output_path
 
-        Returns:
-            Dictionary of pruning masks
-        """
-        masks = {}
-        current_amount = self.initial_amount
+    @abc.abstractmethod
+    def get_extension(self) -> str:
+        """Return file extension for this compression format."""
+        pass
 
-        for iteration in range(self.num_iterations):
-            print(
-                f"Iteration {iteration + 1}/{self.num_iterations} - Pruning {current_amount * 100:.1f}%"
+
+# ============================================================================
+# Lossless Compression
+# ============================================================================
+
+
+class GZIPCompress(BaseCompressor):
+    """GZIP compression."""
+
+    def __init__(self, compresslevel: int = 9):
+        self.compresslevel = compresslevel
+
+    def compress(self, data: bytes) -> bytes:
+        return gzip.compress(data, compresslevel=self.compresslevel)
+
+    def decompress(self, data: bytes) -> bytes:
+        return gzip.decompress(data)
+
+    def get_extension(self) -> str:
+        return ".gz"
+
+
+class ZLIBCompress(BaseCompressor):
+    """ZLIB compression (raw deflate)."""
+
+    def __init__(self, level: int = 9):
+        self.level = level
+
+    def compress(self, data: bytes) -> bytes:
+        import zlib
+
+        return zlib.compress(data, level=self.level)
+
+    def decompress(self, data: bytes) -> bytes:
+        import zlib
+
+        return zlib.decompress(data)
+
+    def get_extension(self) -> str:
+        return ".zz"
+
+
+class BZ2Compress(BaseCompressor):
+    """BZ2 compression."""
+
+    def __init__(self, compresslevel: int = 9):
+        self.compresslevel = compresslevel
+
+    def compress(self, data: bytes) -> bytes:
+        return bz2.compress(data, compresslevel=self.compresslevel)
+
+    def decompress(self, data: bytes) -> bytes:
+        return bz2.decompress(data)
+
+    def get_extension(self) -> str:
+        return ".bz2"
+
+
+class LZMACompress(BaseCompressor):
+    """LZMA compression."""
+
+    def __init__(self, preset: int = 6):
+        if not HAS_LZMA:
+            raise ImportError("lzma module is required for LZMACompress")
+        self.preset = preset
+
+    def compress(self, data: bytes) -> bytes:
+        return lzma.compress(data, preset=self.preset)
+
+    def decompress(self, data: bytes) -> bytes:
+        return lzma.decompress(data)
+
+    def get_extension(self) -> str:
+        return ".xz"
+
+
+class LZ4Compress(BaseCompressor):
+    """LZ4 compression."""
+
+    def __init__(self, compression_level: int = 0):
+        if not HAS_LZ4:
+            raise ImportError("lz4.frame package is required for LZ4Compress")
+        self.compression_level = compression_level
+
+    def compress(self, data: bytes) -> bytes:
+        return lz4.frame.compress(data, compression_level=self.compression_level)
+
+    def decompress(self, data: bytes) -> bytes:
+        return lz4.frame.decompress(data)
+
+    def get_extension(self) -> str:
+        return ".lz4"
+
+
+class ZstandardCompress(BaseCompressor):
+    """Zstandard (Zstd) compression."""
+
+    def __init__(self, level: int = 3):
+        if not HAS_ZSTD:
+            raise ImportError("zstandard package is required for ZstandardCompress")
+        self.level = level
+
+    def compress(self, data: bytes) -> bytes:
+        cctx = zstd.ZstdCompress(level=self.level)
+        return cctx.compress(data)
+
+    def decompress(self, data: bytes) -> bytes:
+        dctx = zstd.ZstdDecompress()
+        return dctx.decompress(data)
+
+    def get_extension(self) -> str:
+        return ".zst"
+
+
+class BrotliCompress(BaseCompressor):
+    """Brotli compression."""
+
+    def __init__(self, quality: int = 6):
+        if not HAS_BROTLI:
+            raise ImportError("brotli package is required for BrotliCompress")
+        self.quality = quality
+
+    def compress(self, data: bytes) -> bytes:
+        return brotli.compress(data, quality=self.quality)
+
+    def decompress(self, data: bytes) -> bytes:
+        return brotli.decompress(data)
+
+    def get_extension(self) -> str:
+        return ".br"
+
+
+# ============================================================================
+# Archive Formats
+# ============================================================================
+
+
+class ZIPArchive:
+    """ZIP archive handler."""
+
+    def __init__(self, compression: int = zipfile.ZIP_DEFLATED, compresslevel: int = 9):
+        self.compression = compression
+        self.compresslevel = compresslevel
+
+    def create(self, files: List[Tuple[str, bytes]], output_path: str) -> None:
+        with zipfile.ZipFile(
+            output_path,
+            "w",
+            compression=self.compression,
+            compresslevel=self.compresslevel,
+        ) as zf:
+            for name, data in files:
+                zf.writestr(name, data)
+
+    def extract(self, archive_path: str, output_dir: str) -> List[str]:
+        extracted = []
+        with zipfile.ZipFile(archive_path, "r") as zf:
+            zf.extractall(output_dir)
+            extracted = zf.namelist()
+        return extracted
+
+    def list_contents(self, archive_path: str) -> List[str]:
+        with zipfile.ZipFile(archive_path, "r") as zf:
+            return zf.namelist()
+
+    def add_file(
+        self, archive_path: str, file_path: str, arcname: Optional[str] = None
+    ) -> None:
+        with zipfile.ZipFile(archive_path, "a", compression=self.compression) as zf:
+            zf.write(file_path, arcname=arcname or os.path.basename(file_path))
+
+
+class TARArchive:
+    """TAR archive handler."""
+
+    def __init__(self, compression: Optional[str] = "gz"):
+        self.compression = compression
+
+    def _get_mode(self) -> str:
+        mode = "w"
+        if self.compression == "gz":
+            mode += ":gz"
+        elif self.compression == "bz2":
+            mode += ":bz2"
+        elif self.compression == "xz":
+            mode += ":xz"
+        elif self.compression == "lzma":
+            mode += ":lzma"
+        return mode
+
+    def create(self, files: List[Tuple[str, bytes]], output_path: str) -> None:
+        mode = self._get_mode()
+        with tarfile.open(output_path, mode) as tf:
+            for name, data in files:
+                tf.writestr(name, data)
+
+    def extract(self, archive_path: str, output_dir: str) -> List[str]:
+        with tarfile.open(archive_path, "r:*") as tf:
+            tf.extractall(output_dir)
+            return [m.name for m in tf.getmembers()]
+
+    def list_contents(self, archive_path: str) -> List[str]:
+        with tarfile.open(archive_path, "r:*") as tf:
+            return [m.name for m in tf.getmembers()]
+
+    def add_file(
+        self, archive_path: str, file_path: str, arcname: Optional[str] = None
+    ) -> None:
+        mode = self._get_mode()
+        with tarfile.open(archive_path, mode) as tf:
+            tf.add(file_path, arcname=arcname or os.path.basename(file_path))
+
+
+class SevenZipArchive:
+    """7z archive handler (requires p7zip or 7z command)."""
+
+    def __init__(self, compression_level: int = 9):
+        self.compression_level = compression_level
+
+    def _run_7z(self, args: List[str]) -> subprocess.CompletedProcess:
+        return subprocess.run(["7z"] + args, capture_output=True, check=False)
+
+    def create(self, files: List[Tuple[str, bytes]], output_path: str) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for name, data in files:
+                path = Path(tmpdir) / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(data)
+            result = self._run_7z(
+                ["a", f"-mx={self.compression_level}", output_path, str(tmpdir) + "/*"]
             )
-
-            # Magnitude pruning
-            pruner = MagnitudePruner(self.model, amount=current_amount)
-            pruner.prune()
-
-            # Save masks
-            for name, module in self.model.named_modules():
-                if hasattr(module, "weight_mask"):
-                    masks[name] = module.weight_mask.clone()
-
-            # Rewind to initial weights
-            with torch.no_grad():
-                for name, param in self.model.named_parameters():
-                    if name in self.initial_weights:
-                        param.copy_(self.initial_weights[name])
-
-            # Apply masks
-            for name, module in self.model.named_modules():
-                if name in masks and hasattr(module, "weight"):
-                    module.weight.data *= masks[name]
-
-            current_amount += self.pruning_rate
-            current_amount = min(current_amount, 0.9)  # Max 90% sparsity
-
-        return masks
-
-
-class DynamicQuantizer:
-    """
-    Dynamic quantization for inference optimization.
-
-    Quantizes weights to int8 for faster inference on CPU.
-
-    Args:
-        model: Model to quantize
-        dtype: Quantization dtype (qint8 or quint8)
-
-    Example:
-        >>> quantizer = DynamicQuantizer(model)
-        >>> quantized_model = quantizer.quantize()
-        >>> # 4x smaller, 2-4x faster on CPU
-    """
-
-    def __init__(self, model: nn.Module, dtype: torch.dtype = torch.qint8):
-        self.model = model
-        self.dtype = dtype
-
-    def quantize(self) -> nn.Module:
-        """Apply dynamic quantization to the model."""
-        quantized_model = torch.quantization.quantize_dynamic(
-            self.model, {nn.Linear, nn.LSTM, nn.GRU}, dtype=self.dtype
-        )
-        return quantized_model
-
-    def compare_sizes(self, quantized_model: nn.Module):
-        """Compare model sizes before and after quantization."""
-
-        def get_size(model):
-            torch.save(model.state_dict(), "temp.pt")
-            size = torch.os.path.getsize("temp.pt") / 1e6
-            torch.os.remove("temp.pt")
-            return size
-
-        original_size = get_size(self.model)
-        quantized_size = get_size(quantized_model)
-
-        print(f"Original model size: {original_size:.2f} MB")
-        print(f"Quantized model size: {quantized_size:.2f} MB")
-        print(f"Compression ratio: {original_size / quantized_size:.2f}x")
-
-
-class StaticQuantizer:
-    """
-    Static quantization with calibration.
-
-    Requires calibration data to determine quantization ranges.
-
-    Args:
-        model: Model to quantize
-        qconfig: Quantization configuration
-
-    Example:
-        >>> quantizer = StaticQuantizer(model)
-        >>> quantizer.prepare()
-        >>> quantizer.calibrate(calibration_loader)
-        >>> quantized_model = quantizer.convert()
-    """
-
-    def __init__(self, model: nn.Module):
-        self.model = model
-        self.prepared_model = None
-
-    def prepare(self):
-        """Prepare model for static quantization."""
-        self.model.eval()
-        self.model.qconfig = torch.quantization.get_default_qconfig("fbgemm")
-        torch.quantization.prepare(self.model, inplace=True)
-        self.prepared_model = self.model
-
-    def calibrate(self, data_loader, num_batches: int = 100):
-        """Calibrate quantization ranges using sample data."""
-        if self.prepared_model is None:
-            raise ValueError("Call prepare() before calibrate()")
-
-        self.prepared_model.eval()
-        with torch.no_grad():
-            for i, (data, _) in enumerate(data_loader):
-                if i >= num_batches:
-                    break
-                self.prepared_model(data)
-
-    def convert(self) -> nn.Module:
-        """Convert to quantized model."""
-        if self.prepared_model is None:
-            raise ValueError("Call prepare() and calibrate() before convert()")
-
-        quantized_model = torch.quantization.convert(self.prepared_model, inplace=True)
-        return quantized_model
-
-
-class KnowledgeDistiller:
-    """
-    Knowledge distillation for model compression.
-
-    Transfer knowledge from a large teacher model to a smaller student model.
-
-    Reference: Hinton et al., "Distilling the Knowledge in a Neural Network", 2015
-
-    Args:
-        teacher: Teacher model (large, trained)
-        student: Student model (small, untrained)
-        temperature: Temperature for softening distributions
-        alpha: Weight for distillation loss vs hard target loss
-
-    Example:
-        >>> distiller = KnowledgeDistiller(teacher, student, temperature=4.0)
-        >>> student = distiller.train(student_loader, teacher_loader, epochs=10)
-    """
-
-    def __init__(
-        self,
-        teacher: nn.Module,
-        student: nn.Module,
-        temperature: float = 4.0,
-        alpha: float = 0.7,
-    ):
-        self.teacher = teacher
-        self.student = student
-        self.temperature = temperature
-        self.alpha = alpha
-
-        self.teacher.eval()
-        for param in self.teacher.parameters():
-            param.requires_grad = False
-
-    def distillation_loss(
-        self,
-        student_logits: torch.Tensor,
-        teacher_logits: torch.Tensor,
-        targets: torch.Tensor,
-        hard_loss_fn: nn.Module,
-    ) -> torch.Tensor:
-        """
-        Compute combined distillation and hard target loss.
-
-        Args:
-            student_logits: Student model predictions
-            teacher_logits: Teacher model predictions (soft targets)
-            targets: Hard targets
-            hard_loss_fn: Loss function for hard targets
-
-        Returns:
-            Combined loss
-        """
-        # Soft targets with temperature
-        soft_loss = nn.KLDivLoss(reduction="batchmean")(
-            torch.log_softmax(student_logits / self.temperature, dim=1),
-            torch.softmax(teacher_logits / self.temperature, dim=1),
-        ) * (self.temperature**2)
-
-        # Hard targets
-        hard_loss = hard_loss_fn(student_logits, targets)
-
-        # Combined loss
-        return self.alpha * soft_loss + (1 - self.alpha) * hard_loss
-
-    def train(
-        self,
-        train_loader: torch.utils.data.DataLoader,
-        optimizer: torch.optim.Optimizer,
-        epochs: int = 10,
-        device: str = "cuda",
-        validate_fn: Optional[Callable] = None,
-    ) -> nn.Module:
-        """
-        Train student model using knowledge distillation.
-
-        Args:
-            train_loader: Training data loader
-            optimizer: Optimizer for student
-            epochs: Number of epochs
-            device: Device to use
-            validate_fn: Optional validation function
-
-        Returns:
-            Trained student model
-        """
-        self.student.to(device)
-        self.teacher.to(device)
-
-        hard_loss_fn = nn.CrossEntropyLoss()
-
-        for epoch in range(epochs):
-            self.student.train()
-            total_loss = 0
-
-            for data, targets in train_loader:
-                data, targets = data.to(device), targets.to(device)
-
-                # Get teacher predictions
-                with torch.no_grad():
-                    teacher_logits = self.teacher(data)
-
-                # Get student predictions
-                student_logits = self.student(data)
-
-                # Compute distillation loss
-                loss = self.distillation_loss(
-                    student_logits, teacher_logits, targets, hard_loss_fn
-                )
-
-                # Backward pass
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-                total_loss += loss.item()
-
-            avg_loss = total_loss / len(train_loader)
-            print(f"Epoch {epoch + 1}/{epochs} - Loss: {avg_loss:.4f}")
-
-            if validate_fn is not None:
-                acc = validate_fn(self.student)
-                print(f"  Validation Accuracy: {acc:.4f}")
-
-        return self.student
-
-
-class WeightClustering:
-    """
-    Weight clustering for model compression.
-
-    Groups similar weights together to reduce unique values.
-
-    Args:
-        model: Model to cluster
-        num_clusters: Number of clusters per layer
-        module_types: Types of modules to cluster
-
-    Example:
-        >>> clusterer = WeightClustering(model, num_clusters=256)
-        >>> clusterer.cluster()  # Reduces precision of weights
-    """
-
-    def __init__(
-        self,
-        model: nn.Module,
-        num_clusters: int = 256,
-        module_types: Optional[tuple] = None,
-    ):
-        self.model = model
-        self.num_clusters = num_clusters
-        self.module_types = module_types or (nn.Linear, nn.Conv2d)
-
-    def cluster(self):
-        """Apply weight clustering to the model."""
-        for name, module in self.model.named_modules():
-            if isinstance(module, self.module_types):
-                self._cluster_module(module)
-
-    def _cluster_module(self, module: nn.Module):
-        """Cluster weights in a single module."""
-        weight = module.weight.data
-        original_shape = weight.shape
-
-        # Flatten weight tensor
-        weight_flat = weight.view(-1)
-
-        # Use k-means clustering
-        from sklearn.cluster import KMeans
-
-        # Sample if too large
-        if len(weight_flat) > 100000:
-            indices = torch.randperm(len(weight_flat))[:100000]
-            samples = weight_flat[indices].cpu().numpy().reshape(-1, 1)
-        else:
-            samples = weight_flat.cpu().numpy().reshape(-1, 1)
-
-        kmeans = KMeans(n_clusters=self.num_clusters, random_state=0, n_init=10)
-        kmeans.fit(samples)
-
-        # Assign all weights to nearest centroid
-        all_weights = weight_flat.cpu().numpy().reshape(-1, 1)
-        clusters = kmeans.predict(all_weights)
-        clustered_weights = kmeans.cluster_centers_[clusters].flatten()
-
-        # Update module weights
-        module.weight.data = (
-            torch.from_numpy(clustered_weights.reshape(original_shape))
-            .to(weight.device)
-            .to(weight.dtype)
-        )
-
-
-class ModelCompressor:
-    """
-    High-level model compression pipeline.
-
-    Combines multiple compression techniques.
-
-    Args:
-        model: Model to compress
-
-    Example:
-        >>> compressor = ModelCompressor(model)
-        >>> compressed = compressor.compress(
-        ...     pruning_amount=0.5,
-        ...     quantization='dynamic',
-        ...     clustering_clusters=256
-        ... )
-    """
-
-    def __init__(self, model: nn.Module):
-        self.model = model
-        self.original_model = copy.deepcopy(model)
+            if result.returncode != 0:
+                raise RuntimeError(f"7z failed: {result.stderr.decode()}")
+
+    def extract(self, archive_path: str, output_dir: str) -> List[str]:
+        result = self._run_7z(["x", archive_path, f"-o{output_dir}", "-y"])
+        if result.returncode != 0:
+            raise RuntimeError(f"7z extraction failed: {result.stderr.decode()}")
+        return self.list_contents(archive_path)
+
+    def list_contents(self, archive_path: str) -> List[str]:
+        result = self._run_7z(["l", archive_path])
+        if result.returncode != 0:
+            raise RuntimeError(f"7z list failed: {result.stderr.decode()}")
+        lines = result.stdout.decode().split("\n")
+        return [line.split()[-1] for line in lines[7:-3] if line.strip()]
+
+
+class RARArchive:
+    """RAR archive handler (requires rar command)."""
+
+    def __init__(self, compression_level: int = 5):
+        self.compression_level = compression_level
+
+    def _run_rar(self, args: List[str]) -> subprocess.CompletedProcess:
+        return subprocess.run(["rar"] + args, capture_output=True, check=False)
+
+    def create(self, files: List[Tuple[str, bytes]], output_path: str) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for name, data in files:
+                path = Path(tmpdir) / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(data)
+            result = self._run_rar(
+                ["a", f"-m{self.compression_level}", output_path, str(tmpdir) + "/*"]
+            )
+            if result.returncode != 0:
+                raise RuntimeError(f"rar failed: {result.stderr.decode()}")
+
+    def extract(self, archive_path: str, output_dir: str) -> List[str]:
+        result = self._run_rar(["x", archive_path, output_dir])
+        if result.returncode != 0:
+            raise RuntimeError(f"rar extraction failed: {result.stderr.decode()}")
+        return []
+
+    def list_contents(self, archive_path: str) -> List[str]:
+        result = self._run_rar(["l", archive_path])
+        if result.returncode != 0:
+            raise RuntimeError(f"rar list failed: {result.stderr.decode()}")
+        return []
+
+
+# ============================================================================
+# Image Compression
+# ============================================================================
+
+
+class BaseImageCompressor(abc.ABC):
+    """Base class for image compression."""
+
+    @abc.abstractmethod
+    def compress(
+        self, input_path: str, output_path: str, quality: Optional[int] = None, **kwargs
+    ) -> None:
+        """Compress an image."""
+        pass
+
+    @abc.abstractmethod
+    def get_extension(self) -> str:
+        """Return output file extension."""
+        pass
+
+    def compress_buffer(
+        self, data: bytes, quality: Optional[int] = None, **kwargs
+    ) -> bytes:
+        """Compress image from buffer."""
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_in:
+            tmp_in.write(data)
+            tmp_in.flush()
+            tmp_out = tempfile.NamedTemporaryFile(
+                suffix=self.get_extension(), delete=False
+            )
+            tmp_out.close()
+            try:
+                self.compress(tmp_in.name, tmp_out.name, quality, **kwargs)
+                return Path(tmp_out.name).read_bytes()
+            finally:
+                Path(tmp_in.name).unlink(missing_ok=True)
+                Path(tmp_out.name).unlink(missing_ok=True)
+
+
+class JPEGCompress(BaseImageCompressor):
+    """JPEG image compression."""
+
+    def __init__(self):
+        if not HAS_PIL:
+            raise ImportError("Pillow package is required for JPEGCompress")
 
     def compress(
-        self,
-        pruning_amount: Optional[float] = None,
-        quantization: Optional[str] = None,
-        clustering_clusters: Optional[int] = None,
-    ) -> nn.Module:
-        """
-        Compress model using specified techniques.
+        self, input_path: str, output_path: str, quality: int = 85, **kwargs
+    ) -> None:
+        with Image.open(input_path) as img:
+            if img.mode in ("RGBA", "LA", "P"):
+                img = img.convert("RGB")
+            img.save(output_path, "JPEG", quality=quality, **kwargs)
 
-        Args:
-            pruning_amount: Fraction of weights to prune (0-1)
-            quantization: 'dynamic' or 'static'
-            clustering_clusters: Number of weight clusters
+    def get_extension(self) -> str:
+        return ".jpg"
 
-        Returns:
-            Compressed model
-        """
-        compressed_model = copy.deepcopy(self.original_model)
 
-        # Pruning
-        if pruning_amount is not None:
-            print(f"Applying magnitude pruning: {pruning_amount * 100:.1f}%")
-            pruner = MagnitudePruner(compressed_model, amount=pruning_amount)
-            pruner.prune()
-            pruner.remove()
+class PNGCompress(BaseImageCompressor):
+    """PNG image compression."""
 
-        # Clustering (before quantization)
-        if clustering_clusters is not None:
-            print(f"Applying weight clustering: {clustering_clusters} clusters")
-            clusterer = WeightClustering(
-                compressed_model, num_clusters=clustering_clusters
+    def __init__(self):
+        if not HAS_PIL:
+            raise ImportError("Pillow package is required for PNGCompress")
+
+    def compress(
+        self, input_path: str, output_path: str, compress_level: int = 9, **kwargs
+    ) -> None:
+        with Image.open(input_path) as img:
+            img.save(output_path, "PNG", compress_level=compress_level, **kwargs)
+
+    def get_extension(self) -> str:
+        return ".png"
+
+
+class WebPCompress(BaseImageCompressor):
+    """WebP image compression."""
+
+    def __init__(self):
+        if not HAS_PIL:
+            raise ImportError("Pillow package is required for WebPCompress")
+
+    def compress(
+        self, input_path: str, output_path: str, quality: int = 80, **kwargs
+    ) -> None:
+        with Image.open(input_path) as img:
+            if img.mode in ("RGBA", "LA") and "lossless" not in kwargs:
+                img = img.convert("RGBA")
+            img.save(output_path, "WEBP", quality=quality, **kwargs)
+
+    def get_extension(self) -> str:
+        return ".webp"
+
+
+class AVIFCompress(BaseImageCompressor):
+    """AVIF image compression (requires pillow-avif-plugin)."""
+
+    def __init__(self):
+        if not HAS_PIL:
+            raise ImportError("Pillow package is required for AVIFCompress")
+
+    def compress(
+        self, input_path: str, output_path: str, quality: int = 50, **kwargs
+    ) -> None:
+        with Image.open(input_path) as img:
+            if img.mode in ("RGBA", "LA", "P"):
+                img = img.convert("RGB")
+            img.save(output_path, "AVIF", quality=quality, **kwargs)
+
+    def get_extension(self) -> str:
+        return ".avif"
+
+
+class JPEGXLCompress(BaseImageCompressor):
+    """JPEG-XL image compression (requires pillow-jxl-plugin or cjxl)."""
+
+    def __init__(self):
+        self._has_pil_jxl = False
+        try:
+            from PIL import JxlImagePlugin
+
+            self._has_pil_jxl = True
+        except ImportError:
+            pass
+
+    def compress(
+        self, input_path: str, output_path: str, quality: int = 80, **kwargs
+    ) -> None:
+        if self._has_pil_jxl:
+            with Image.open(input_path) as img:
+                if img.mode in ("RGBA", "LA", "P"):
+                    img = img.convert("RGB")
+                img.save(output_path, "JPEG XL", quality=quality, **kwargs)
+        else:
+            result = subprocess.run(
+                ["cjxl", input_path, output_path, f"-q{quality}"],
+                capture_output=True,
             )
-            clusterer.cluster()
+            if result.returncode != 0:
+                raise RuntimeError(f"cjxl failed: {result.stderr.decode()}")
 
-        # Quantization
-        if quantization == "dynamic":
-            print("Applying dynamic quantization")
-            quantizer = DynamicQuantizer(compressed_model)
-            compressed_model = quantizer.quantize()
-        elif quantization == "static":
-            print("Static quantization requires calibration data - skipping")
-
-        # Report compression
-        self._report_compression(compressed_model)
-
-        return compressed_model
-
-    def _report_compression(self, compressed_model: nn.Module):
-        """Report compression statistics."""
-        orig_params = sum(p.numel() for p in self.original_model.parameters())
-        comp_params = sum(p.numel() for p in compressed_model.parameters())
-
-        print(f"\nCompression Report:")
-        print(f"  Original parameters: {orig_params:,}")
-        print(f"  Compressed parameters: {comp_params:,}")
-        print(f"  Parameter reduction: {(1 - comp_params / orig_params) * 100:.1f}%")
+    def get_extension(self) -> str:
+        return ".jxl"
 
 
-def measure_inference_time(
-    model: nn.Module,
-    input_shape: Tuple[int, ...],
-    device: str = "cpu",
-    num_runs: int = 100,
-    warmup: int = 10,
-) -> float:
-    """
-    Measure average inference time.
+# ============================================================================
+# Video Compression
+# ============================================================================
+
+
+class BaseVideoCompressor(abc.ABC):
+    """Base class for video compression."""
+
+    @abc.abstractmethod
+    def compress(
+        self, input_path: str, output_path: str, quality: int = 23, **kwargs
+    ) -> None:
+        """Compress a video."""
+        pass
+
+    @abc.abstractmethod
+    def get_extension(self) -> str:
+        """Return output file extension."""
+        pass
+
+
+class VideoEncoder:
+    """Base video encoder using ffmpeg."""
+
+    def __init__(self, codec: str):
+        self.codec = codec
+        self._check_ffmpeg()
+
+    def _check_ffmpeg(self) -> None:
+        result = subprocess.run(["ffmpeg", "-version"], capture_output=True)
+        if result.returncode != 0:
+            raise RuntimeError("ffmpeg is required for video encoding")
+
+    def encode(
+        self,
+        input_path: str,
+        output_path: str,
+        quality: int = 23,
+        preset: str = "medium",
+        extra_args: Optional[List[str]] = None,
+    ) -> None:
+        args = [
+            "ffmpeg",
+            "-i",
+            input_path,
+            "-c:v",
+            self.codec,
+            "-crf",
+            str(quality),
+            "-preset",
+            preset,
+            "-y",
+            output_path,
+        ]
+        if extra_args:
+            args = args[:-1] + extra_args + [output_path]
+        result = subprocess.run(args, capture_output=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"ffmpeg encoding failed: {result.stderr.decode()}")
+
+
+class H264Encode(VideoEncoder):
+    """H.264/AVC video compression."""
+
+    def __init__(self):
+        super().__init__("libx264")
+
+    def compress(
+        self, input_path: str, output_path: str, quality: int = 23, **kwargs
+    ) -> None:
+        self.encode(input_path, output_path, quality, **kwargs)
+
+    def get_extension(self) -> str:
+        return ".mp4"
+
+
+class H265Encode(VideoEncoder):
+    """H.265/HEVC video compression."""
+
+    def __init__(self):
+        super().__init__("libx265")
+
+    def compress(
+        self, input_path: str, output_path: str, quality: int = 28, **kwargs
+    ) -> None:
+        self.encode(input_path, output_path, quality, **kwargs)
+
+    def get_extension(self) -> str:
+        return ".mp4"
+
+
+class VP9Encode(VideoEncoder):
+    """VP9 video compression."""
+
+    def __init__(self):
+        super().__init__("libvpx-vp9")
+
+    def compress(
+        self, input_path: str, output_path: str, quality: int = 31, **kwargs
+    ) -> None:
+        self.encode(input_path, output_path, quality, **kwargs)
+
+    def get_extension(self) -> str:
+        return ".webm"
+
+
+class AV1Encode(VideoEncoder):
+    """AV1 video compression."""
+
+    def __init__(self):
+        super().__init__("libaom-av1")
+
+    def compress(
+        self, input_path: str, output_path: str, quality: int = 35, **kwargs
+    ) -> None:
+        self.encode(input_path, output_path, quality, **kwargs)
+
+    def get_extension(self) -> str:
+        return ".mp4"
+
+
+# ============================================================================
+# Audio Compression
+# ============================================================================
+
+
+class BaseAudioCompressor(abc.ABC):
+    """Base class for audio compression."""
+
+    @abc.abstractmethod
+    def compress(
+        self, input_path: str, output_path: str, quality: Optional[int] = None, **kwargs
+    ) -> None:
+        """Compress an audio file."""
+        pass
+
+    @abc.abstractmethod
+    def get_extension(self) -> str:
+        """Return output file extension."""
+        pass
+
+
+class AudioEncoder:
+    """Base audio encoder using ffmpeg."""
+
+    def __init__(self, codec: str):
+        self.codec = codec
+
+    def encode(
+        self,
+        input_path: str,
+        output_path: str,
+        bitrate: Optional[int] = None,
+        extra_args: Optional[List[str]] = None,
+    ) -> None:
+        args = ["ffmpeg", "-i", input_path, "-c:a", self.codec, "-y", output_path]
+        if bitrate:
+            args.insert(-1, "-b:a")
+            args.insert(-1, f"{bitrate}k")
+        if extra_args:
+            args = args[:-1] + extra_args + [output_path]
+        result = subprocess.run(args, capture_output=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"ffmpeg encoding failed: {result.stderr.decode()}")
+
+
+class MP3Encode(AudioEncoder):
+    """MP3 audio compression."""
+
+    def __init__(self):
+        super().__init__("libmp3lame")
+
+    def compress(
+        self, input_path: str, output_path: str, quality: int = 192, **kwargs
+    ) -> None:
+        self.encode(input_path, output_path, bitrate=quality, **kwargs)
+
+    def get_extension(self) -> str:
+        return ".mp3"
+
+
+class AACEncode(AudioEncoder):
+    """AAC audio compression."""
+
+    def __init__(self):
+        super().__init__("aac")
+
+    def compress(
+        self, input_path: str, output_path: str, quality: int = 192, **kwargs
+    ) -> None:
+        self.encode(input_path, output_path, bitrate=quality, **kwargs)
+
+    def get_extension(self) -> str:
+        return ".m4a"
+
+
+class OpusEncode(AudioEncoder):
+    """Opus audio compression."""
+
+    def __init__(self):
+        super().__init__("libopus")
+
+    def compress(
+        self, input_path: str, output_path: str, quality: int = 128, **kwargs
+    ) -> None:
+        self.encode(input_path, output_path, bitrate=quality, **kwargs)
+
+    def get_extension(self) -> str:
+        return ".opus"
+
+
+class FLACCompress(BaseAudioCompressor):
+    """FLAC lossless audio compression."""
+
+    def __init__(self):
+        pass
+
+    def compress(
+        self, input_path: str, output_path: str, compression_level: int = 8, **kwargs
+    ) -> None:
+        if not HAS_AV:
+            result = subprocess.run(
+                [
+                    "ffmpeg",
+                    "-i",
+                    input_path,
+                    "-c:a",
+                    "flac",
+                    f"-compression_level{compression_level}",
+                    "-y",
+                    output_path,
+                ],
+                capture_output=True,
+            )
+            if result.returncode != 0:
+                raise RuntimeError(f"ffmpeg encoding failed: {result.stderr.decode()}")
+        else:
+            with av.open(input_path) as inp:
+                out = av.open(output_path, "w")
+                stream = inp.streams.audio[0]
+                ostream = out.add_stream("flac", template=stream)
+                ostream.options = {"compression_level": str(compression_level)}
+                for frame in inp.decode(stream):
+                    frame = frame.reformat(ostream.layout)
+                    for p in ostream.encode(frame):
+                        out.mux(p)
+                for p in ostream.encode():
+                    out.mux(p)
+                out.close()
+
+    def get_extension(self) -> str:
+        return ".flac"
+
+
+# ============================================================================
+# Neural Compression
+# ============================================================================
+
+
+class NeuralCompress:
+    """Neural compression using pre-trained models."""
+
+    def __init__(self, model_name: str = "bjpeg"):
+        if not HAS_TORCH:
+            raise ImportError("PyTorch is required for NeuralCompress")
+        self.model_name = model_name
+        self.model = self._load_model(model_name)
+
+    def _load_model(self, model_name: str) -> nn.Module:
+        try:
+            import torchvision.models as models
+
+            if model_name == "bjpeg":
+                model = models.resnet50(pretrained=False)
+            else:
+                model = models.resnet34(pretrained=False)
+            model.eval()
+            return model
+        except Exception as e:
+            raise RuntimeError(f"Failed to load model {model_name}: {e}")
+
+    def compress(self, data: bytes) -> bytes:
+        import numpy as np
+        import torch
+
+        arr = np.frombuffer(data, dtype=np.uint8)
+        tensor = torch.from_numpy(arr).float() / 255.0
+        tensor = tensor.view(1, -1)
+        with torch.no_grad():
+            encoded = self.model(tensor)
+        return encoded.numpy().tobytes()
+
+    def decompress(self, data: bytes) -> bytes:
+        import numpy as np
+        import torch
+
+        arr = np.frombuffer(data, dtype=np.float32)
+        tensor = torch.from_numpy(arr).view(1, -1)
+        with torch.no_grad():
+            decoded = self.model(tensor)
+        result = (decoded.clamp(0, 1) * 255).round().byte()
+        return result.numpy().tobytes()
+
+
+class CompressionAutoencoder(nn.Module):
+    """Autoencoder for neural compression."""
+
+    def __init__(
+        self, input_dim: int = 784, hidden_dim: int = 256, latent_dim: int = 64
+    ):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, latent_dim),
+        )
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, input_dim),
+            nn.Sigmoid(),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        z = self.encoder(x)
+        return self.decoder(z)
+
+    def encode(self, x: torch.Tensor) -> torch.Tensor:
+        return self.encoder(x)
+
+    def decode(self, z: torch.Tensor) -> torch.Tensor:
+        return self.decoder(z)
+
+    def compress(self, data: bytes) -> bytes:
+        import numpy as np
+        import torch
+
+        arr = np.frombuffer(data, dtype=np.uint8)
+        tensor = torch.from_numpy(arr).float() / 255.0
+        tensor = tensor.view(1, -1)
+        with torch.no_grad():
+            z = self.encode(tensor)
+        return z.numpy().tobytes()
+
+    def decompress(self, data: bytes) -> bytes:
+        import numpy as np
+        import torch
+
+        arr = np.frombuffer(data, dtype=np.float32)
+        z = torch.from_numpy(arr).view(1, -1)
+        with torch.no_grad():
+            x = self.decode(z)
+        result = (x * 255).round().byte()
+        return result.numpy().tobytes()
+
+
+# ============================================================================
+# Utility Functions
+# ============================================================================
+
+
+def compress(
+    data: bytes,
+    method: str = "gzip",
+    level: Optional[int] = None,
+    **kwargs,
+) -> bytes:
+    """Compress data using specified method.
 
     Args:
-        model: Model to benchmark
-        input_shape: Shape of input tensor
-        device: Device to use
-        num_runs: Number of inference runs
-        warmup: Number of warmup runs
+        data: Data to compress
+        method: Compression method ('gzip', 'zlib', 'bz2', 'lzma', 'lz4', 'zstd', 'brotli')
+        level: Compression level (method-specific)
+        **kwargs: Additional parameters
 
     Returns:
-        Average inference time in milliseconds
+        Compressed data
     """
-    model.to(device)
-    model.eval()
+    compressors = {
+        "gzip": GZIPCompress(level or 9),
+        "zlib": ZLIBCompress(level or 9),
+        "bz2": BZ2Compress(level or 9),
+        "lzma": LZMACompress(level or 6),
+        "lz4": LZ4Compress(level or 0),
+        "zstd": ZstandardCompress(level or 3),
+        "brotli": BrotliCompress(level or 6),
+    }
+    if method not in compressors:
+        raise ValueError(f"Unknown compression method: {method}")
+    return compressors[method].compress(data)
 
-    dummy_input = torch.randn(input_shape).to(device)
 
-    # Warmup
-    with torch.no_grad():
-        for _ in range(warmup):
-            _ = model(dummy_input)
+def decompress(
+    data: bytes,
+    method: str = "gzip",
+    **kwargs,
+) -> bytes:
+    """Decompress data using specified method.
 
-    # Benchmark
-    if device == "cuda":
-        torch.cuda.synchronize()
+    Args:
+        data: Compressed data
+        method: Decompression method ('gzip', 'zlib', 'bz2', 'lzma', 'lz4', 'zstd', 'brotli')
+        **kwargs: Additional parameters
 
-    start = torch.cuda.Event(enable_timing=True)
-    end = torch.cuda.Event(enable_timing=True)
+    Returns:
+        Decompressed data
+    """
+    decompressors = {
+        "gzip": GZIPCompress(),
+        "zlib": ZLIBCompress(),
+        "bz2": BZ2Compress(),
+        "lzma": LZMACompress(),
+        "lz4": LZ4Compress(),
+        "zstd": ZstandardCompress(),
+        "brotli": BrotliCompress(),
+    }
+    if method not in decompressors:
+        raise ValueError(f"Unknown decompression method: {method}")
+    return decompressors[method].decompress(data)
 
-    times = []
-    with torch.no_grad():
-        for _ in range(num_runs):
-            if device == "cuda":
-                start.record()
-                _ = model(dummy_input)
-                end.record()
-                torch.cuda.synchronize()
-                times.append(start.elapsed_time(end))
-            else:
-                import time
 
-                start_time = time.time()
-                _ = model(dummy_input)
-                times.append((time.time() - start_time) * 1000)
+def get_best_codec(
+    data: bytes,
+    target_size: Optional[int] = None,
+    speed_priority: bool = False,
+) -> Tuple[str, bytes]:
+    """Find the best compression codec for given data.
 
-    avg_time = sum(times) / len(times)
-    return avg_time
+    Args:
+        data: Data to compress
+        target_size: Target compressed size (optional)
+        speed_priority: Prefer faster codecs over compression ratio
+
+    Returns:
+        Tuple of (codec_name, compressed_data)
+    """
+    codecs = ["gzip", "bz2", "zstd", "lz4", "brotli"]
+    if HAS_LZMA:
+        codecs.append("lzma")
+
+    results = []
+    for codec in codecs:
+        try:
+            compressed = compress(data, method=codec)
+            ratio = len(data) / len(compressed)
+            results.append((codec, compressed, ratio))
+        except Exception:
+            continue
+
+    if not results:
+        raise RuntimeError("No compression codec available")
+
+    if speed_priority:
+        results.sort(key=lambda x: len(x[1]))
+    else:
+        results.sort(key=lambda x: x[2], reverse=True)
+
+    if target_size:
+        for codec, compressed, ratio in results:
+            if len(compressed) <= target_size:
+                return codec, compressed
+        return results[-1][:2]
+
+    return results[0][0], results[0][1]
+
+
+# ============================================================================
+# Registry
+# ============================================================================
+
+
+COMPRESSION_CODECS = {
+    "gzip": GZIPCompress,
+    "zlib": ZLIBCompress,
+    "bz2": BZ2Compress,
+    "lzma": LZMACompress,
+    "lz4": LZ4Compress,
+    "zstd": ZstandardCompress,
+    "brotli": BrotliCompress,
+}
+
+ARCHIVE_FORMATS = {
+    "zip": ZIPArchive,
+    "tar": TARArchive,
+    "7z": SevenZipArchive,
+    "rar": RARArchive,
+}
+
+IMAGE_CODECS = {
+    "jpeg": JPEGCompress,
+    "png": PNGCompress,
+    "webp": WebPCompress,
+    "avif": AVIFCompress,
+    "jxl": JPEGXLCompress,
+}
+
+VIDEO_CODECS = {
+    "h264": H264Encode,
+    "h265": H265Encode,
+    "vp9": VP9Encode,
+    "av1": AV1Encode,
+}
+
+AUDIO_CODECS = {
+    "mp3": MP3Encode,
+    "aac": AACEncode,
+    "opus": OpusEncode,
+    "flac": FLACCompress,
+}
+
+
+def get_codec(
+    codec_name: str,
+) -> Union[BaseCompressor, BaseImageCompressor, BaseAudioCompressor]:
+    """Get a compression codec by name."""
+    all_codecs = {**COMPRESSION_CODECS, **IMAGE_CODECS, **AUDIO_CODECS}
+    if codec_name in all_codecs:
+        return all_codecs[codec_name]()
+    if codec_name in VIDEO_CODECS:
+        return VIDEO_CODECS[codec_name]()
+    raise ValueError(f"Unknown codec: {codec_name}")
 
 
 __all__ = [
-    "MagnitudePruner",
-    "StructuredPruner",
-    "LotteryTicketPruner",
-    "DynamicQuantizer",
-    "StaticQuantizer",
-    "KnowledgeDistiller",
-    "WeightClustering",
-    "ModelCompressor",
-    "measure_inference_time",
+    "BaseCompressor",
+    "Compressor",
+    "ArchiveHandler",
+    "GZIPCompress",
+    "ZLIBCompress",
+    "BZ2Compress",
+    "LZMACompress",
+    "LZ4Compress",
+    "ZstandardCompress",
+    "BrotliCompress",
+    "ZIPArchive",
+    "TARArchive",
+    "SevenZipArchive",
+    "RARArchive",
+    "JPEGCompress",
+    "PNGCompress",
+    "WebPCompress",
+    "AVIFCompress",
+    "JPEGXLCompress",
+    "H264Encode",
+    "H265Encode",
+    "VP9Encode",
+    "AV1Encode",
+    "MP3Encode",
+    "AACEncode",
+    "OpusEncode",
+    "FLACCompress",
+    "NeuralCompress",
+    "CompressionAutoencoder",
+    "compress",
+    "decompress",
+    "get_best_codec",
+    "get_codec",
+    "COMPRESSION_CODECS",
+    "ARCHIVE_FORMATS",
+    "IMAGE_CODECS",
+    "VIDEO_CODECS",
+    "AUDIO_CODECS",
 ]

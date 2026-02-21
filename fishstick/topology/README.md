@@ -1,33 +1,27 @@
-# Topological Data Analysis
+# Topological Data Analysis (TDA) Module
 
-Persistent homology, Vietoris-Rips complex, and Mapper algorithm.
+Comprehensive implementation of topological data analysis methods for extracting geometric and topological features from data.
+
+## Overview
+
+This module provides state-of-the-art tools for:
+
+- **Persistent Homology**: Multi-scale topological feature detection
+- **Mapper Algorithm**: Topological simplification and clustering
+- **Vietoris-Rips Complex**: Simplicial complex construction
+- **Topological Losses**: Geometric deep learning regularization
+- **TDA Layers**: Differentiable topological operations
+- **TDA Kernels**: Kernel methods for persistence diagrams
+- **Multi-Scale Analysis**: Adaptive scale selection
 
 ## Installation
 
 ```bash
-pip install fishstick[topology]
-```
+# Core dependencies (included in fishstick)
+pip install torch numpy scipy
 
-## Overview
-
-The `topology` module provides tools for topological data analysis (TDA) including persistent homology and Mapper algorithm.
-
-## Usage
-
-```python
-from fishstick.topology import PersistentHomology, VietorisRipsComplex, Mapper
-
-# Compute persistent homology
-ph = PersistentHomology(max_dimension=2)
-diagram = ph.fit_transform(point_cloud)
-
-# Vietoris-Rips complex
-vr = VietorisRipsComplex(threshold=0.5)
-complex = vr.build(point_cloud)
-
-# Mapper algorithm
-mapper = Mapper(n_cubes=10, overlap=0.5)
-simplified = mapper.fit_transform(data)
+# Optional: for faster homology computations
+pip install gudhi ripser
 ```
 
 ## Core Classes
