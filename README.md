@@ -556,24 +556,340 @@ data = np.random.randn(1000, 3)
 learned_graph = CausalDiscovery.pc_algorithm(data)
 ```
 
+### Diffusion Models
+
+```python
+from fishstick.diffusion import DiffusionModel, DDPM, DDIM
+
+# Denoising Diffusion Probabilistic Model
+ddpm = DDPM(
+    model=model,
+    timesteps=1000,
+    beta_schedule="linear"
+)
+
+# Forward diffusion (add noise)
+noised_x = ddpm.add_noise(x, t)
+
+# Reverse process (denoise)
+denoised = ddpm.sample(batch_size=4)
+```
+
+### Reinforcement Learning
+
+```python
+from fishstick.rl import PPOAgent, DQNAgent, ActorCritic
+
+# PPO Agent
+agent = PPOAgent(
+    state_dim=64,
+    action_dim=4,
+    hidden_dim=256
+)
+
+# Collect experience and update
+for episode in range(100):
+    state = env.reset()
+    done = False
+    while not done:
+        action = agent.select_action(state)
+        next_state, reward, done = env.step(action)
+        agent.store_transition(state, action, reward, next_state, done)
+        state = next_state
+    agent.update()
+```
+
+### Federated Learning
+
+```python
+from fishstick.federated import FederatedClient, FederatedServer
+
+# Federated averaging
+server = FederatedServer(
+    model=global_model,
+    aggregation="fedavg"
+)
+
+# Add clients
+for client_data in client_datasets:
+    client = FederatedClient(
+        model=global_model,
+        data=client_data,
+        local_epochs=5
+    )
+    server.add_client(client)
+
+# Run federated training
+server.train(n_rounds=10)
+```
+
+### Continual Learning
+
+```python
+from fishstick.continual import EWC, PackNet, ProgressiveNeuralNetwork
+
+# Elastic Weight Consolidation
+ewc = EWC(
+    model=task1_model,
+    dataloader=task1_loader,
+    importance=1000
+)
+
+# Train on task 2 with EWC regularization
+for epoch in range(10):
+    for batch in task2_loader:
+        output = model(batch.x)
+        loss = criterion(output, batch.y)
+        ewc_loss = ewc.penalty(model)
+        (loss + ewc_loss).backward()
+```
+
+### Time Series Forecasting
+
+```python
+from fishstick.timeseries import TimeSeriesTransformer, TemporalCNN, LSTM
+
+# Time series forecasting model
+model = TimeSeriesTransformer(
+    input_dim=10,
+    d_model=128,
+    n_heads=4,
+    n_layers=3,
+    prediction_horizon=24
+)
+
+# Forecast future values
+output = model(input_sequence)  # [batch, horizon, features]
+```
+
+### Audio & Speech Processing
+
+```python
+from fishstick.audio import AudioEncoder, SpeechRecognition
+from fishstick.speech import WaveNet
+
+# Audio feature extraction
+encoder = AudioEncoder(sample_rate=16000)
+features = encoder.extract_mfcc(audio_tensor)
+
+# Speech recognition
+asr = SpeechRecognition(model_name="wav2vec2")
+transcription = asr.transcribe(audio_tensor)
+```
+
+### Privacy-Preserving ML
+
+```python
+from fishstick.privacy import DifferentialPrivacy, SecureAggregation
+from fishstick.federated import SecureAggregation
+
+# Differential Privacy
+dp = DifferentialPrivacy(
+    epsilon=1.0,
+    delta=1e-5,
+    max_grad_norm=1.0
+)
+dp_model = dp.apply(model)
+
+# Secure aggregation for federated learning
+secure_agg = SecureAggregation(threshold=0.5)
+aggregated_update = secure_agg.aggregate(client_updates)
+```
+
+### Model Compression
+
+```python
+from fishstick.quantization import QuantizedModel, PostTrainingQuantization
+from fishstick.pruning import MagnitudePruner, LotteryTicketFinder
+
+# Post-training quantization
+quantizer = PostTrainingQuantization(backend="fbgemm")
+quantized_model = quantizer.quantize(model, calibration_data)
+
+# Network pruning
+pruner = MagnitudePruner(sparsity=0.5)
+pruned_model = pruner.prune(model)
+```
+
+### Anomaly Detection
+
+```python
+from fishstick.anomaly_detection import IsolationForest, AutoencoderAnomaly, OneClassSVM
+
+# Autoencoder-based anomaly detection
+detector = AutoencoderAnomaly(
+    input_dim=784,
+    latent_dim=16,
+    threshold=0.1
+)
+
+# Detect anomalies
+scores = detector.predict(data)
+anomalies = scores > detector.threshold
+```
+
 ## Architecture
 
+FishStick contains **234 modules** organized into the following categories:
+
+### Core & Theory
 ```
 fishstick/
-├── core/               # Fundamental types and manifolds
-├── categorical/        # Category theory structures
-├── geometric/          # Differential geometry
-├── dynamics/           # Hamiltonian & thermodynamic
-├── sheaf/             # Sheaf theory
-├── rg/                # Renormalization group
-├── verification/      # Formal verification
-├── frameworks/        # 26 unified frameworks (A-Z)
-├── neural_ode/        # Neural ODEs
-├── graph/             # Geometric GNNs
-├── probabilistic/     # Bayesian methods
-├── flows/             # Normalizing flows
-├── equivariant/       # Equivariant networks
-└── causal/            # Causal inference
+├── core/               # Fundamental types (MetricTensor, SymplecticForm, PhaseSpaceState)
+├── categorical/       # Category theory (MonoidalCategory, Functor, Lens)
+├── geometric/         # Manifolds, Fisher information, sheaf theory
+├── dynamics/          # Hamiltonian NNs, thermodynamic gradient flows
+├── sheaf/            # Sheaf-optimized attention
+├── rg/               # Renormalization group autoencoders
+├── topology/         # Algebraic topology utilities
+└── verification/    # Formal verification (Lean, SMT)
+```
+
+### Frameworks (26 A-Z)
+```
+├── frameworks/       # 26 unified theoretical frameworks
+```
+
+### Deep Learning
+```
+├── neural_ode/       # Neural ODE solvers
+├── graph/            # Geometric GNNs
+├── equivariant/      # SE(3)-equivariant networks
+├── diffusion/        # Diffusion models
+├── flows/            # Normalizing flows
+├── transformer/     # Transformer architectures
+├── attention/       # Attention mechanisms
+├── recurrent/       # RNNs, LSTMs, GRUs
+├── convolutional/    # CNNs, conv layers
+└── vision/           # Vision models
+```
+
+### Probabilistic & Bayesian
+```
+├── probabilistic/   # Bayesian NNs, MCDropout
+├── bayesian_advanced/# GP, conjugate priors
+├── distributions/   # Probability distributions
+├── uncertainty/     # Uncertainty quantification
+└── uncertainty_ext/ # Advanced uncertainty
+```
+
+### Causal & Logic
+```
+├── causal/           # Causal inference
+├── causal_inference/ # SCM, causal discovery
+├── causal_advanced/  # Advanced causal methods
+├── logic_advanced/   # Logic, symbolic reasoning
+├── neural_prover/    # Neural theorem proving
+└── knowledge_graph/ # Knowledge graphs
+```
+
+### Learning Paradigms
+```
+├── reinforcement/   # RL algorithms
+├── rl/              # Reinforcement learning
+├── rl_extensions/   # Extended RL
+├── federated/       # Federated learning
+├── federated_ext/   # Advanced federated
+├── continual/       # Continual learning
+├── continual_learning/# Extended continual
+├── active_learning/ # Active learning
+├── selfsupervised/  # Self-supervised
+├── fewshot_learning/# Few-shot learning
+├── zeroshot/        # Zero-shot learning
+└── transfer/       # Transfer learning
+```
+
+### Multi-Modality
+```
+├── multimodal/      # Multimodal learning
+├── vision/           # Computer vision
+├── audio/            # Audio processing
+├── speech/           # Speech recognition
+├── nlp/              # Natural language
+├── text_generation/  # Text generation
+├── image_generation/ # Image generation
+├── video_advanced/   # Video processing
+└── scene_understanding/# Scene understanding
+```
+
+### Data & Processing
+```
+├── data/             # Data utilities
+├── data_processing/  # Data pipelines
+├── augmentation/     # Data augmentation
+├── augmentation_ext/ # Extended augmentation
+├── feature_selection/# Feature selection
+├── clustering/       # Clustering algorithms
+├── timeseries/       # Time series models
+├── timeseries_forecast/# Forecasting
+└── preprocessing/   # Preprocessing
+```
+
+### Optimization & Training
+```
+├── advanced_optim/   # Advanced optimizers
+├── training/         # Training utilities
+├── training_utils/   # Training helpers
+├── distributed/     # Distributed training
+├── gradients/       # Gradient handling
+├── loss/            # Loss functions
+├── schedulers/       # Learning rate schedulers
+└── regularization/  # Regularization
+```
+
+### Model Compression
+```
+├── quantization/    # Model quantization
+├── pruning/         # Network pruning
+├── distillation/    # Knowledge distillation
+├── compression/     # Model compression
+└── model_compression/# Compression utilities
+```
+
+### Domain-Specific
+```
+├── bioinformatics/   # Bioinformatics
+├── bio/             # Biological data
+├── finance/         # Financial models
+├── finance_advanced/# Advanced finance
+├── climate/          # Climate modeling
+├── climate_weather/ # Weather forecasting
+├── healthcare/      # Healthcare ML
+├── robotics/        # Robotics
+├── recommendation/ # Recommender systems
+└── anomaly_detection/# Anomaly detection
+```
+
+### Security & Privacy
+```
+├── privacy/         # Privacy-preserving ML
+├── privacy_advanced/# Advanced privacy
+├── adversarial/     # Adversarial robustness
+├── robustness/      # Model robustness
+├── fairness/        # Fairness in ML
+└── security/        # Security utilities
+```
+
+### Interpretability & Explainability
+```
+├── explainability/  # Model explainability
+├── explain/        # Interpretability
+├── visualization/  # Visualization tools
+└── attribution/    # Attribution methods
+```
+
+### Infrastructure
+```
+├── experiments/     # Experiment tracking
+├── logging/        # Logging utilities
+├── monitoring/     # Model monitoring
+├── profiling/      # Performance profiling
+├── serving/        # Model serving
+├── deployment/     # Deployment utilities
+├── api/            # API utilities
+├── database/       # Database integration
+├── cache/          # Caching
+└── workflow/       # Workflow orchestration
 ```
 
 ## Testing
