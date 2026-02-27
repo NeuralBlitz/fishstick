@@ -1,5 +1,29 @@
 """Framework implementations init."""
 
+from fishstick.frameworks.uniintelli import (
+    UniIntelliModel,
+    create_uniintelli,
+)
+from fishstick.frameworks.hsca import (
+    HSCAModel,
+    create_hsca,
+)
+from fishstick.frameworks.uia import (
+    UIAModel,
+    create_uia,
+)
+from fishstick.frameworks.scif import (
+    SCIFModel,
+    create_scif,
+)
+from fishstick.frameworks.uif import (
+    UIFModel,
+    create_uif,
+)
+from fishstick.frameworks.uis import (
+    UISModel,
+    create_uis,
+)
 from fishstick.frameworks.crls import (
     CRLSModel,
     create_crls,
@@ -19,6 +43,10 @@ from fishstick.frameworks.uis_j import (
 from fishstick.frameworks.uia_k import (
     UIA_K_Model,
     create_uia_k,
+)
+from fishstick.frameworks.uia_h import (
+    UIAHModel,
+    create_uia_h,
 )
 from fishstick.frameworks.crls_l import (
     CRLS_L_Model,
@@ -82,6 +110,18 @@ from fishstick.frameworks.scif_z import (
 )
 
 __all__ = [
+    "UniIntelliModel",
+    "create_uniintelli",
+    "HSCAModel",
+    "create_hsca",
+    "UIAModel",
+    "create_uia",
+    "SCIFModel",
+    "create_scif",
+    "UIFModel",
+    "create_uif",
+    "UISModel",
+    "create_uis",
     "CRLSModel",
     "create_crls",
     "ToposFormer",
@@ -92,6 +132,8 @@ __all__ = [
     "create_uis_j",
     "UIA_K_Model",
     "create_uia_k",
+    "UIAHModel",
+    "create_uia_h",
     "CRLS_L_Model",
     "create_crls_l",
     "UIA_M_Model",

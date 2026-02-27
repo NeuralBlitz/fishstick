@@ -184,7 +184,15 @@ open_cover = [[0, 1, 2], [2, 3, 4], [4, 5, 6]]
 output, weights = attn(x, open_cover=open_cover)
 ```
 
-## The 6 Frameworks
+## The 26 Frameworks (A-Z)
+
+The framework includes 26 theoretical frameworks spanning A-Z, each implementing different combinations of:
+- Categorical & geometric structures
+- Hamiltonian/symplectic dynamics
+- Sheaf theory & cohomology
+- Renormalization group methods
+- Thermodynamic bounds
+- Formal verification
 
 ### A. UniIntelli - Categorical–Geometric–Thermodynamic Synthesis
 ```python
